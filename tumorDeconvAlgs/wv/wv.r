@@ -24,7 +24,7 @@ if (is.null(args[2])) {
 #       results <- wv('sig_matrix_file.txt','mixture_file.txt')
 #
 # Input: signature matrix and mixture file, formatted as specified at https://github.com/BelindaBGarana/DMEA/blob/main/man/WV.Rd
-# Output: matrix object containing all results
+# Output: dataframe containing all results
 # License: CC0
 
 
@@ -38,16 +38,33 @@ wv <- function(sig_matrix, mixture_file){
   X <- read.csv(sig_matrix, sep = "\t", row.names = 1,check.names=F)
   #Y <- read.table(mixture_file, header=T, sep="\t",check.names=F)
   Y <- read.csv(mixture_file, sep = "\t",check.names=F)
-  #to prevent crashing on duplicated gene symbols, add unique numbers to identical names
-  dups <- dim(Y)[1] - length(unique(Y[,1]))
-  if(dups > 0) {
-    warning(paste(dups," duplicated gene symbol(s) found in mixture file!",sep=""))
-    rownames(Y) <- make.names(Y[,1], unique=TRUE)
-  }else {rownames(Y) <- Y[,1]}
   
-  cell.types <- colnames(sig.matrix)[2:ncol(sig.matrix)]
+  #to prevent crashing on duplicated gene symbols, add unique numbers to identical names
+  if (!is.numeric(Y[,1])) { # if first column contains gene symbols
+    dups <- dim(Y)[1] - length(unique(Y[,1]))
+    if(dups > 0) {
+      warning(paste(dups," duplicated gene symbol(s) found in mixture file!",sep=""))
+      rownames(Y) <- make.names(Y[,1], unique=TRUE)
+    }else {rownames(Y) <- Y[,1]}  
+    Y <- Y[,2:ncol(Y)] # remove column of gene symbols after setting rownames
+  }
+  
+  # reformat Y so that gene symbols are along columns and samples along rows
+  Y <- as.data.frame(t(Y))
+  Y$Sample <- rownames(Y)
+  Y <- Y[,c("Sample", colnames(Y)[1:(ncol(Y)-1)])]
+  
+  # make sure first column of sig_matrix contains gene symbols
+  if (ncol(X) == ncol(dplyr::select_if(X, is.numeric))) {
+    X$Gene <- rownames(X)
+    X <- X[,c("Gene", colnames(X)[1:(ncol(X)-1)])]
+  }
+  
+  # prepare result dataframe
+  cell.types <- colnames(X)[2:ncol(X)]
   obj <- as.data.frame(cell.types)
-  obj[,colnames(Y)[2:ncol(Y)]] <- NA
+  obj[,Y$Sample] <- NA
+  
   for (i in seq_len(length(cell.types))) {
     # run WV for each cell type signature
     temp.sig <- X[,c(1,(i+1))]
@@ -55,13 +72,25 @@ wv <- function(sig_matrix, mixture_file){
     
     # organize results to store in obj
     rownames(temp.WV) <- temp.WV[,1]
-    temp.WV <- temp.WV[colnames(Y)[2:ncol(Y)],]
-    obj[i,] <- temp.WV$WV
+    temp.WV <- temp.WV[Y$Sample,]
+    obj[i,2:ncol(obj)] <- temp.WV$WV
   }
+  
+  # format output
   rownames(obj) <- obj[,1]
   obj <- obj[,2:ncol(obj)]
   return(obj)
 }
+
+# ## test wv
+# # load test data
+# mixture_file <- "~/OneDrive - PNNL/Documents/GitHub/decomprolute/toy_data/ov-all-mrna-reduced.tsv"
+# 
+# # load example signature matrix
+# sig_matrix <- "~/OneDrive - PNNL/Documents/GitHub/decomprolute/signature_matrices/AML.txt"
+# 
+# # run wv
+# test.output <- wv(sig_matrix, mixture_file)
 
 tryCatch(
     expr = {
