@@ -60,6 +60,7 @@ wv <- function(sig_matrix, mixture_file){
   }
   rownames(obj) <- obj[,1]
   obj <- obj[,2:ncol(obj)]
+  return(obj)
 }
 
 tryCatch(
