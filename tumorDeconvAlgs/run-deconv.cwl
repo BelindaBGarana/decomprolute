@@ -19,6 +19,14 @@ inputs:
      type: File
      
 steps:
+  run-wv:
+     run: ./wv/run-wv-tool.cwl
+     when: $(inputs.alg.trim() == "wv")
+     in:
+      expression: matrix
+      signature: signature
+      alg: alg
+     out: [deconvoluted]
   run-cibersort:
      run: ./cibersort/run-cibersort-tool.cwl
      when: $(inputs.alg.trim() == "cibersort")
@@ -75,6 +83,7 @@ outputs:
   deconvoluted:
     type: File
     outputSource:
+      - run-wv/deconvoluted
       - run-cibersort/deconvoluted
       - run-xcell/deconvoluted
  #     - run-cibersortx/deconvoluted
