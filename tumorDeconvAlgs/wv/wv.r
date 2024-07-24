@@ -13,7 +13,6 @@ if (is.null(args[2])) {
 # Author: Belinda B. Garana, Pacific Northwest National Laboratory (belinda.garana@pnnl.gov)
 # Requirements:
 #       R v3.0 or later. (dependencies below might not work properly with earlier versions)
-#       install.packages('DMEA')
 # Windows users using the R GUI may need to Run as Administrator to install or update packages.
 #
 # Usage:
@@ -27,70 +26,96 @@ if (is.null(args[2])) {
 # Output: dataframe containing all results
 # License: CC0
 
-
-#dependencies
-library(DMEA)
+# format input data
+# input X: signature dataframe
+# input Y: expression dataframe
+# output X: signature matrix where rownames are gene names and all colnames are cell types
+# output Y: expression matrix where rownames are sample names and all colnames are gene names in X
+prep_for_wv <- function(X, Y) {
+  if (nrow(Y) > ncol(Y)) { # checks if genes are along rows, assuming # of genes > # of samples
+    # assumes gene symbols are in first column or rownames
+    # to prevent crashing on duplicated gene symbols, add unique numbers to identical names
+    if (!is.numeric(Y[,1])) { # if first column contains gene symbols
+      dups <- dim(Y)[1] - length(unique(Y[,1]))
+      if(dups > 0) {
+        warning(paste(dups," duplicated gene symbol(s) found in mixture file!",sep=""))
+        rownames(Y) <- make.names(Y[,1], unique=TRUE)
+      }else {rownames(Y) <- Y[,1]}  
+      Y <- Y[,2:ncol(Y)] # remove column of gene symbols after setting rownames
+    }
+    
+    # reformat Y so that gene symbols are along columns and samples along rows
+    Y <- as.data.frame(t(Y))
+  }
+  
+  # make sure gene symbols are rownames for signature matrix
+  if (!is.numeric(X[,1])) {
+    rownames(X) <- X[,1]
+    X <- X[,2:ncol(X)]
+  }
+  
+  # only keep genes in signatures
+  Y <- Y[,rownames(X)[rownames(X) %in% colnames(Y)]]
+  
+  # make sure genes are quantified in all samples even if all were in signature
+  Y <- t(na.omit(t(Y)))
+  
+  while (nrow(X) != ncol(Y)) { # X & Y must have same # of genes
+    # filter signature matrix for genes also in filtered expression matrix
+    X <- X[rownames(X) %in% colnames(Y),]
+    
+    # filter expression matrix for genes also in filtered signature matrix
+    Y <- Y[,rownames(X)]
+  }
+  
+  return(list(X = as.matrix(X), Y = as.matrix(Y)))
+}
 
 #main function
 wv <- function(sig_matrix, mixture_file){
   #read in data
-  #X <- read.table(sig_matrix,header=T,sep="\t",row.names=1,check.names=F)
   X <- read.csv(sig_matrix, sep = "\t", row.names = 1,check.names=F)
-  #Y <- read.table(mixture_file, header=T, sep="\t",check.names=F)
   Y <- read.csv(mixture_file, sep = "\t",check.names=F)
   
-  #to prevent crashing on duplicated gene symbols, add unique numbers to identical names
-  if (!is.numeric(Y[,1])) { # if first column contains gene symbols
-    dups <- dim(Y)[1] - length(unique(Y[,1]))
-    if(dups > 0) {
-      warning(paste(dups," duplicated gene symbol(s) found in mixture file!",sep=""))
-      rownames(Y) <- make.names(Y[,1], unique=TRUE)
-    }else {rownames(Y) <- Y[,1]}  
-    Y <- Y[,2:ncol(Y)] # remove column of gene symbols after setting rownames
-  }
-  
-  # reformat Y so that gene symbols are along columns and samples along rows
-  Y <- as.data.frame(t(Y))
-  Y$Sample <- rownames(Y)
-  Y <- Y[,c("Sample", colnames(Y)[1:(ncol(Y)-1)])]
-  
-  # make sure first column of sig_matrix contains gene symbols
-  if (ncol(X) == ncol(dplyr::select_if(X, is.numeric))) {
-    X$Gene <- rownames(X)
-    X <- X[,c("Gene", colnames(X)[1:(ncol(X)-1)])]
-  }
+  new.inputs <- prep_for_wv(X, Y)
+  X <- new.inputs$X
+  Y <- new.inputs$Y
   
   # prepare result dataframe
-  cell.types <- colnames(X)[2:ncol(X)]
-  obj <- as.data.frame(cell.types)
-  obj[,Y$Sample] <- NA
+  cell.types <- colnames(X)
+  obj <- matrix(NA, nrow = ncol(X), ncol = nrow(Y), 
+                dimnames = list(cell.types, rownames(Y)))
   
-  for (i in seq_len(length(cell.types))) {
+  if (nrow(X) > 0) {
     # run WV for each cell type signature
-    temp.sig <- X[,c(1,(i+1))]
-    temp.WV <- DMEA::WV(Y, temp.sig)$scores
-    
-    # organize results to store in obj
-    rownames(temp.WV) <- temp.WV[,1]
-    temp.WV <- temp.WV[Y$Sample,]
-    obj[i,2:ncol(obj)] <- temp.WV$WV
+    for (i in cell.types) {
+      message("Running signature for ", i, " cells")
+      temp.sig <- na.omit(as.matrix(X[,i]))
+      temp.expr <- as.matrix(Y[,rownames(temp.sig)])
+      obj[i,] <- temp.expr %*% temp.sig
+    } 
+  } else {
+    message("no genes in weights match in expression")
   }
-  
-  # format output
-  rownames(obj) <- obj[,1]
-  obj <- obj[,2:ncol(obj)]
+
   return(obj)
 }
 
-# ## test wv
-# # load test data
-# mixture_file <- "~/OneDrive - PNNL/Documents/GitHub/decomprolute/toy_data/ov-all-mrna-reduced.tsv"
-# 
-# # load example signature matrix
-# sig_matrix <- "~/OneDrive - PNNL/Documents/GitHub/decomprolute/signature_matrices/AML.txt"
-# 
-# # run wv
-# test.output <- wv(sig_matrix, mixture_file)
+## test wv
+# input type: either "prot" to test proteomics or "mrna" to test mRNA input
+test_wv <- function(type="prot") {
+  base.path <- "~/OneDrive - PNNL/Documents/GitHub/decomprolute"
+  # load test data
+  mixture_file <- file.path(base.path, "toy_data", 
+                            paste0("ov-all-",type,"-reduced.tsv"))
+  
+  # load example signature matrix
+  sig_matrix <- file.path(base.path,"signature_matrices/AML.txt")
+  
+  # run wv
+  test.output <- wv(sig_matrix, mixture_file) 
+  return(test.output)
+}
 
 tryCatch(
     expr = {
@@ -103,7 +128,7 @@ tryCatch(
       print(e)
       X <- read.csv(args[2], sep = "\t", row.names = 1)
       Y <- read.csv(args[1], sep = "\t")
-      wv <- matrix(0, nrow = length(colnames(Y)) - 1, ncol = length(colnames(X)), dimnames = list(colnames(Y)[2:length(colnames(Y))], colnames(X)))
-      write.table(t(wv), file="deconvoluted.tsv", quote = FALSE, col.names = NA, sep = "\t")
+      wv.result <- matrix(NA, nrow = length(colnames(Y)) - 1, ncol = length(colnames(X)), dimnames = list(colnames(Y)[2:length(colnames(Y))], colnames(X)))
+      write.table(t(wv.result), file="deconvoluted.tsv", quote = FALSE, col.names = NA, sep = "\t")
     }
 )
