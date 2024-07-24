@@ -25,6 +25,7 @@ inputs:
       - xcell
       - epic
       - cibersort
+      - wv
    rna-sigs: 
       type: string[]
       default: ['LM22','PBMC']
