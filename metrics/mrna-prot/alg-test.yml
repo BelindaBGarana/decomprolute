@@ -4,9 +4,11 @@ cancerTypes:
 prot-algorithms:
   - mcpcounter
   - epic
+  - wv
 mrna-algorithms:
   - mcpcounter
   - epic
+  - wv
 tissueTypes:
    - tumor
 signatures:
