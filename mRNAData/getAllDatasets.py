@@ -36,8 +36,8 @@ def getCancerObj(cancertype):
     elif cancertype =='ucec':
         dat = cptac.Ucec()
     elif cancertype =='aml':
-        aml.syn = 'syn26427387'
-        dat = pd.read_csv(syn.get(aml.syn).path, delimiter='\t')
+        aml_syn = 'syn26427387'
+        dat = pd.read_csv(syn.get(aml_syn).path, delimiter='\t')
         
         # remove columns 1, 3, 4 named 'stable_id', 'description', 'biotype' and make sure col2 'display_label' becomes rownames
         dat.index = dat['display_label']

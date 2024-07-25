@@ -36,14 +36,14 @@ def getCancerObj(cancertype):
     elif cancertype =='ucec':
         dat = cptac.Ucec()
     elif cancertype =='aml':
-        aml.syn = 'syn25714248'
-        dat = pd.read_csv(syn.get(aml.syn).path, delimiter='\t')
+        aml_syn = 'syn25714248'
+        dat = pd.read_csv(syn.get(aml_syn).path, delimiter='\t')
         # make sure gene names are rownames?
-    elif cancertype =='AML_Monocyte': # AML sorted proteomics
+    #elif cancertype =='AML_Monocyte': # AML sorted proteomics
         #dat = # get from synapse and format appropriately
-    elif cancertype =='AML_Progenitor': # AML sorted proteomics
+    #elif cancertype =='AML_Progenitor': # AML sorted proteomics
         #dat = # get from synapse and format appropriately
-    elif cancertype =='AML_MSC': # AML sorted proteomics
+    #elif cancertype =='AML_MSC': # AML sorted proteomics
         #dat = # get from synapse and format appropriately
     else:
         print('Wrong cancer type: '+cancertype)
