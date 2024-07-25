@@ -7,6 +7,12 @@ import cptac
 import os
 os.mkdir('/data/')
 
+import pandas as pd
+import synapseclient
+
+syn = synapseclient.Synapse()
+syn.login()
+
 def getCancerObj(cancertype):
    # cptac.download(dataset=cancertype,source='harmonized',)
     if cancertype == 'brca':
@@ -29,6 +35,10 @@ def getCancerObj(cancertype):
         dat = cptac.Pdac()
     elif cancertype =='ucec':
         dat = cptac.Ucec()
+    elif cancertype =='aml':
+        aml.syn = 'syn26427387'
+        # remove columns 1, 3, 4 named 'stable_id', 'description', 'biotype' and make sure col2 'display_label' becomes rownames
+        #dat = # get from synapse and format appropriately
     else:
         print('Wrong cancer type: '+cancertype)
         exit()
