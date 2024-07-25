@@ -38,10 +38,13 @@ def getCancerObj(cancertype):
     elif cancertype =='aml':
         aml.syn = 'syn25714248'
         dat = pd.read_csv(syn.get(aml.syn).path, delimiter='\t')
-        # make sure gene names are rownames
-    elif cancertype =='sortedAML':
+        # make sure gene names are rownames?
+    elif cancertype =='AML_Monocyte': # AML sorted proteomics
         #dat = # get from synapse and format appropriately
-        # separate by cell type?
+    elif cancertype =='AML_Progenitor': # AML sorted proteomics
+        #dat = # get from synapse and format appropriately
+    elif cancertype =='AML_MSC': # AML sorted proteomics
+        #dat = # get from synapse and format appropriately
     else:
         print('Wrong cancer type: '+cancertype)
         exit()

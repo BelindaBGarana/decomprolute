@@ -37,8 +37,11 @@ def getCancerObj(cancertype):
         dat = cptac.Ucec()
     elif cancertype =='aml':
         aml.syn = 'syn26427387'
+        dat = pd.read_csv(syn.get(aml.syn).path, delimiter='\t')
+        
         # remove columns 1, 3, 4 named 'stable_id', 'description', 'biotype' and make sure col2 'display_label' becomes rownames
-        #dat = # get from synapse and format appropriately
+        dat.index = dat['display_label']
+        dat = dat.drop(columns=['stable_id', 'display_label', 'description', 'biotype'])
     else:
         print('Wrong cancer type: '+cancertype)
         exit()
