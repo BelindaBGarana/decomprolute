@@ -2,13 +2,17 @@ cancerTypes:
   - luad
   - ccrcc
 prot-algorithms:
-  - mcpcounter
+  - cibersort
   - epic
+  - mcpcounter
   - wv
+  - xcell
 mrna-algorithms:
-  - mcpcounter
+  - cibersort
   - epic
+  - mcpcounter
   - wv
+  - xcell
 tissueTypes:
    - tumor
 signatures:
