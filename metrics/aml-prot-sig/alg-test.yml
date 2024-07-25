@@ -1,0 +1,19 @@
+cancerTypes:
+  - aml
+prot-algorithms:
+  - mcpcounter
+  - epic
+  - xcell
+  - cibersort
+  - wv
+mrna-algorithms:
+  - mcpcounter
+  - epic
+  - xcell
+  - cibersort
+  - wv
+tissueTypes:
+   - tumor
+signatures:
+  - AML
+  - sortedAML
