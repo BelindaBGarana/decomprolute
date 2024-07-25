@@ -1,0 +1,17 @@
+signatures:
+  - LM7c
+  - PBMC
+  - LM22
+prot-algorithms:
+  - cibersort
+  - wv
+
+protFile:
+  class: File
+  path: ../../toy_data/ov-all-prot-reduced.tsv
+
+rnaFile:
+  class: File
+  path: ../../toy_data/ov-all-mrna-reduced.tsv
+cancerType: test
+tissueType: test

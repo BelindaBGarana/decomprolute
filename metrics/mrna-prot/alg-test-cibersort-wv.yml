@@ -1,0 +1,14 @@
+cancerTypes:
+  - luad
+  - ccrcc
+prot-algorithms:
+  - cibersort
+  - wv
+mrna-algorithms:
+  - cibersort
+  - wv
+tissueTypes:
+   - tumor
+signatures:
+  - LM7c
+  - LM22
