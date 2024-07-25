@@ -1,6 +1,14 @@
 cancerTypes:
+  - hnscc
+  - gbm
   - luad
+  - coad
+  - ovarian
   - ccrcc
+  - lscc
+  - brca
+  - pdac
+  - ucec
 prot-algorithms:
   - cibersort
   - wv
