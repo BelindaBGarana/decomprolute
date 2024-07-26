@@ -39,12 +39,75 @@ def getCancerObj(cancertype):
         aml_syn = 'syn25714248'
         dat = pd.read_csv(syn.get(aml_syn).path, delimiter='\t')
         # make sure gene names are rownames?
-    #elif cancertype =='AML_Monocyte': # AML sorted proteomics
-        #dat = # get from synapse and format appropriately
-    #elif cancertype =='AML_Progenitor': # AML sorted proteomics
-        #dat = # get from synapse and format appropriately
-    #elif cancertype =='AML_MSC': # AML sorted proteomics
-        #dat = # get from synapse and format appropriately
+    elif cancertype =='AML_Monocyte_DIA': # AML sorted proteomics
+        aml_syn = 'syn58914135'
+        dat = pd.read_csv(syn.get(aml_syn).path)
+        
+        # extract columns with CD14+ samples
+        dat = dat.filter(regex="CD14")
+    elif cancertype =='AML_Progenitor_DIA': # AML sorted proteomics
+        aml_syn = 'syn58914135'
+        dat = pd.read_csv(syn.get(aml_syn).path)
+        
+        # extract columns with CD34+ samples
+        dat = dat.filter(regex="CD34")
+    elif cancertype =='AML_MSC_DIA': # AML sorted proteomics
+        aml_syn = 'syn58914135'
+        dat = pd.read_csv(syn.get(aml_syn).path)
+        
+        # extract columns with MSC samples
+        dat = dat.filter(regex="MSC")
+    elif cancertype =='AML_Monocyte_TMT': # AML sorted proteomics
+        aml_syn = 'syn53493076'
+        dat = pd.read_csv(syn.get(aml_syn).path, delimiter='\t')
+        
+        # load metadata
+        meta_syn = 'syn53461075'
+        meta = pd.read_excel(
+            syn.get(meta_syn).path,
+            engine='openpyxl'
+        )
+        meta['id'] = meta.index + 1
+        meta = meta.dropna()
+        meta['id2'] = meta['patient'] + '_' + meta['SampleType']
+
+        # extract columns with CD14+ samples
+        dat.columns = meta['id2']
+        dat = dat.filter(regex="CD14")
+    elif cancertype =='AML_Progenitor_TMT': # AML sorted proteomics
+        aml_syn = 'syn53493076'
+        dat = pd.read_csv(syn.get(aml_syn).path, delimiter='\t')
+        
+        # load metadata
+        meta_syn = 'syn53461075'
+        meta = pd.read_excel(
+            syn.get(meta_syn).path,
+            engine='openpyxl'
+        )
+        meta['id'] = meta.index + 1
+        meta = meta.dropna()
+        meta['id2'] = meta['patient'] + '_' + meta['SampleType']
+
+        # extract columns with CD34+ samples
+        dat.columns = meta['id2']
+        dat = dat.filter(regex="CD34")
+    elif cancertype =='AML_MSC_TMT': # AML sorted proteomics
+        aml_syn = 'syn53493076'
+        dat = pd.read_csv(syn.get(aml_syn).path, delimiter='\t')
+        
+        # load metadata
+        meta_syn = 'syn53461075'
+        meta = pd.read_excel(
+            syn.get(meta_syn).path,
+            engine='openpyxl'
+        )
+        meta['id'] = meta.index + 1
+        meta = meta.dropna()
+        meta['id2'] = meta['patient'] + '_' + meta['SampleType']
+
+        # extract columns with MSC samples
+        dat.columns = meta['id2']
+        dat = dat.filter(regex="MSC")
     else:
         print('Wrong cancer type: '+cancertype)
         exit()
