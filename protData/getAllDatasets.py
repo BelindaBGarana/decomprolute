@@ -7,6 +7,12 @@ import cptac
 import os
 os.mkdir('/data/')
 
+import pandas as pd
+import synapseclient
+
+syn = synapseclient.Synapse()
+syn.login()
+
 def getCancerObj(cancertype):
    # cptac.download(dataset=cancertype,source='harmonized',)
     if cancertype == 'brca':
@@ -29,6 +35,16 @@ def getCancerObj(cancertype):
         dat = cptac.Pdac()
     elif cancertype =='ucec':
         dat = cptac.Ucec()
+    elif cancertype =='aml':
+        aml_syn = 'syn25714248'
+        dat = pd.read_csv(syn.get(aml_syn).path, delimiter='\t')
+        # make sure gene names are rownames?
+    #elif cancertype =='AML_Monocyte': # AML sorted proteomics
+        #dat = # get from synapse and format appropriately
+    #elif cancertype =='AML_Progenitor': # AML sorted proteomics
+        #dat = # get from synapse and format appropriately
+    #elif cancertype =='AML_MSC': # AML sorted proteomics
+        #dat = # get from synapse and format appropriately
     else:
         print('Wrong cancer type: '+cancertype)
         exit()

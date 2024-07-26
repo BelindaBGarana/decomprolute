@@ -1,0 +1,28 @@
+cancerTypes:
+  - ucec
+  - brca
+  - coad
+  - lscc
+  - ccrcc
+  - luad
+  - hnscc
+  - ovarian
+  - pdac
+  - gbm
+prot-algorithms:
+  - mcpcounter
+  - epic
+  - xcell
+  - cibersort
+mrna-algorithms:
+  - mcpcounter
+  - epic
+  - xcell
+  - cibersort
+tissueTypes:
+   - tumor
+signatures:
+  - Matrisome
+  - LM7c
+  - PBMC
+  - LM22

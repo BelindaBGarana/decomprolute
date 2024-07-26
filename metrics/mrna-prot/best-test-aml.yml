@@ -1,0 +1,20 @@
+signatures:
+  - AML
+  - sortedAML
+  - trianaAML
+prot-algorithms:
+  - cibersort
+  - xcell
+  - mcpcounter
+  - epic
+  - wv
+
+protFile:
+  class: File
+  path: ../../aml_data/beat-aml-prot.tsv
+
+rnaFile:
+  class: File
+  path: ../../aml_data/beat-aml-mrna.tsv
+cancerType: aml
+tissueType: tumor

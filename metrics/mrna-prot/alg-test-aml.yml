@@ -1,0 +1,13 @@
+cancerTypes:
+  - aml
+prot-algorithms:
+  - cibersort
+  - wv
+mrna-algorithms:
+  - cibersort
+  - wv
+tissueTypes:
+   - tumor
+signatures:
+  - AML
+  - sortedAML
