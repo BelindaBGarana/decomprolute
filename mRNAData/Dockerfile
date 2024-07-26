@@ -4,7 +4,7 @@ from amancevice/pandas:1.4.0-slim
 #RUN ln -s /usr/include/locale.h /usr/include/xlocale.h
 RUN pip install --no-cache-dir numpy scipy matplotlib
 
-RUN pip install --upgrade cptac
+RUN pip install --upgrade cptac synapseclient
 COPY mRNADataSetsCLI.py /bin/
 RUN chmod 777 /bin/mRNADataSetsCLI.py
 COPY getAllDatasets.py /bin/

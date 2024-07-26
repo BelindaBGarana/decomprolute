@@ -11,7 +11,7 @@ arguments:
 
 requirements:
     - class: DockerRequirement
-      dockerPull: tumordeconv/mrna-data
+      dockerPull: mrna-data:latest
     - class: InlineJavascriptRequirement
 
 inputs:

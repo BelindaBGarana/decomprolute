@@ -11,7 +11,7 @@ arguments:
 
 requirements:
     - class: DockerRequirement
-      dockerPull: tumordeconv/prot-data
+      dockerPull: prot-data:latest
     - class: InlineJavascriptRequirement
 
 inputs:
