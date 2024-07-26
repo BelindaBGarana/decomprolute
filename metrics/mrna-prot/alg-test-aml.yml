@@ -10,4 +10,4 @@ tissueTypes:
    - tumor
 signatures:
   - AML
-  - sortedAML
+  - global_sortedAML
