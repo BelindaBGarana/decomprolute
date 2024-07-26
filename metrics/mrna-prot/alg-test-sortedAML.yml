@@ -1,0 +1,18 @@
+cancerTypes:
+  - AML_Monocyte_DIA
+  - AML_Monocyte_TMT
+  - AML_Progenitor_DIA
+  - AML_Progenitor_TMT
+  - AML_MSC_DIA
+  - AML_MSC_TMT
+prot-algorithms:
+  - cibersort
+  - wv
+mrna-algorithms:
+  - cibersort
+  - wv
+tissueTypes:
+   - tumor
+signatures:
+  - AML
+  - global_sortedAML
