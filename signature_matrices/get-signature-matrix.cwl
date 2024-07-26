@@ -11,7 +11,7 @@ arguments:
 
 requirements:
   - class: DockerRequirement
-    dockerPull: tumordeconv/signature_matrices
+    dockerPull: signature_matrices:latest
   - class: MultipleInputFeatureRequirement
 
 inputs:
