@@ -29,9 +29,12 @@ outputs:
    cell-fig:
       type: File[]
       outputSource: get-celltype-cors/fig
-   prot-files:
+   prot-files1:
       type: File[]
-      outputSource: run-all-algs-by-sig/prot-file
+      outputSource: run-all-algs-by-sig/prot-file1
+   prot-files2:
+      type: File[]
+      outputSource: run-all-algs-by-sig/prot-file2
     
 
 steps:
