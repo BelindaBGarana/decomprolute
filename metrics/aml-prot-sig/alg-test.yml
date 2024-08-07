@@ -2,8 +2,8 @@ cancerTypes:
   - aml
 prot-algorithms:
 #  - mcpcounter
-  - epic
-  - xcell
+#  - epic
+#  - xcell
 #  - cibersort
   - wv
 tissueTypes:
