@@ -31,7 +31,7 @@ combineResultsFiles<-function(file.list,colnamevals=c('patient','correlation')){
   ##first we read in each file and make int a single table
   full.tab<-do.call(rbind,lapply(file.list,function(file){
     vars <- unlist(strsplit(basename(file),split='-')) #split into pieces
-    print("vars are ", vars)
+    print("vars are ", paste0(vars, sep=" "))
     tissue=vars[1]
     disease=vars[2]
     signature1=vars[3]
