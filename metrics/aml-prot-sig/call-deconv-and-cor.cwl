@@ -16,12 +16,9 @@ inputs:
    tissueType: string
 
 outputs:
-  pat-cor-file:
+  sig-cor-file:
      type: File
-     outputSource: patient-cor/corr
-  cell-cor-file:
-     type: File
-     outputSource: celltype-cor/corr
+     outputSource: sig-cor/corr
   prot-file1:
      type: File
      outputSource: deconv-prot1/deconvoluted
