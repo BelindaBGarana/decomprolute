@@ -6,12 +6,6 @@ prot-algorithms:
   - xcell
   - cibersort
   - wv
-mrna-algorithms:
-  - mcpcounter
-  - epic
-  - xcell
-  - cibersort
-  - wv
 tissueTypes:
    - tumor
 signature1: AML_vanGalen
