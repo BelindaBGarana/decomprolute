@@ -20,11 +20,9 @@ RUN Rscript -e 'install.packages("reshape2",dependencies=TRUE)'
 
 
 COPY combine_results.R /bin
-#COPY immune_subtypes.R /bin
-
-#COPY pancan_immune_subtypes.csv /bin
+COPY compare_sigs.R /bin
 
 RUN chmod 777 /bin/combine_results.R
-#RUN chmod 777 /bin/immune_subtypes.R
+RUN chmod 777 /bin/compare_sigs.R
 
 VOLUME ['/tmp']
