@@ -11,7 +11,7 @@ arguments:
 
 requirements:
   - class: DockerRequirement
-    dockerPull: correlation:latest
+    dockerPull: correlations:latest
   - class: StepInputExpressionRequirement
   - class: InlineJavascriptRequirement
 
