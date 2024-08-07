@@ -37,7 +37,7 @@ outputs:
 steps:
    run-all-algs-by-sig:
       run: call-deconv-and-cor.cwl
-      scatter: [signature,mrna-alg,prot-alg,tissueType,cancerType]
+      scatter: [signature,prot-alg,tissueType,cancerType]
       scatterMethod: flat_crossproduct
       in:
         signature: signatures
@@ -45,13 +45,13 @@ steps:
         cancerType: cancerTypes
         tissueType: tissueTypes
       out:
-        [pat-cor-file,cell-cor-file,prot-file]
+        [sig-cor-file,prot-file1,prot-file2]
    get-celltype-cors:
       run: ../figures/plot-figs.cwl
       in:
         metricType:
             valueFrom: "cellType"
         files:
-            source: run-all-algs-by-sig/cell-cor-file
+            source: run-all-algs-by-sig/sig-cor-file
       out:
         [table,fig]
