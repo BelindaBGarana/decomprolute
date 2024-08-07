@@ -15,5 +15,5 @@ mrna-algorithms:
 tissueTypes:
    - tumor
 signatures:
-  - AML
-  - sortedAML
+  - AML_vanGalen
+  - AML_sorted

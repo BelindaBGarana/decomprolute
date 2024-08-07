@@ -10,8 +10,7 @@ requirements:
   - class: InlineJavascriptRequirement
   
 inputs:
-   signature: string
-   mrna-alg: string
+   signature: string[]
    prot-alg: string
    cancerType: string
    tissueType: string
@@ -23,68 +22,40 @@ outputs:
   cell-cor-file:
      type: File
      outputSource: celltype-cor/corr
-  mrna-file:
+  prot-file1:
      type: File
-     outputSource: deconv-mrna/deconvoluted
-  prot-file:
+     outputSource: deconv-prot1/deconvoluted
+  prot-file2:
      type: File
-     outputSource: deconv-prot/deconvoluted
-#  mat-dist-file:
-#     type: File
-#     outputSource: matrix-distance/dist
+     outputSource: deconv-prot2/deconvoluted
 
 steps:
-  deconv-mrna:
-     run: mrna-deconv.cwl
-     in:
-       cancerType: cancerType
-       mrnaAlg: mrna-alg
-       signature: signature
-       sampleType: tissueType
-     out: [deconvoluted]
-  deconv-prot:
+  deconv-prot1:
      run: ../prot-deconv.cwl
      in:
        cancerType: cancerType
        protAlg: prot-alg
-       signature: signature
+       signature: signature[0]
        sampleType: tissueType
      out: [deconvoluted]
-  patient-cor:
-     run: ../correlations/deconv-corr-cwl-tool.cwl
+  deconv-prot2:
+     run: ../prot-deconv.cwl
      in:
        cancerType: cancerType
-       mrnaAlg: mrna-alg
+       protAlg: prot-alg
+       signature: signature[1]
+       sampleType: tissueType
+     out: [deconvoluted]
+  sig-cor:
+     run: ../correlations/deconv-corr-cwl-tool-sigs.cwl
+     in:
+       cancerType: cancerType
        protAlg: prot-alg
        signature: signature
        sampleType: tissueType
-       proteomics:
-         source: deconv-prot/deconvoluted
-       transcriptomics:
-         source: deconv-mrna/deconvoluted
+       proteomics1:
+         source: deconv-prot1/deconvoluted
+       proteomics2:
+         source: deconv-prot2/deconvoluted
      out: [corr]
-  celltype-cor:
-     run: ../correlations/deconv-corrXcelltypes-cwl-tool.cwl
-     in:
-       cancerType: cancerType
-       mrnaAlg: mrna-alg
-       protAlg: prot-alg
-       signature: signature
-       sampleType: tissueType
-       proteomics:
-         source: deconv-prot/deconvoluted
-       transcriptomics:
-         source: deconv-mrna/deconvoluted
-     out: [corr]
-#  matrix-distance:
-#     run: ../distance/deconv-comparison-tool.cwl
-#     in:
-#       matrixA: deconv-mrna/deconvoluted
-#       matrixB: deconv-prot/deconvoluted
-#       cancerType: cancerType
-#       aAlg: mrna-alg
-#       bAlg: prot-alg
-#       signature: signature
-#       sampleType: tissueType
-#     out:
-#       [dist]
+
