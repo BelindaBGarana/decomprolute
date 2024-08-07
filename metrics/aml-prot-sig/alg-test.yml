@@ -1,10 +1,10 @@
 cancerTypes:
   - aml
 prot-algorithms:
-  - mcpcounter
+#  - mcpcounter
   - epic
   - xcell
-  - cibersort
+#  - cibersort
   - wv
 tissueTypes:
    - tumor
