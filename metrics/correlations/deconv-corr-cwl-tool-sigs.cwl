@@ -33,8 +33,10 @@ inputs:
     type: string
   protAlg:
     type: string
-  signature:
-    type: string[]
+  signature1:
+    type: string
+  signature2:
+    type: string
   sampleType:
     type: string
 
@@ -45,7 +47,7 @@ outputs:
       glob: "corr.tsv" 
       outputEval: |
         ${
-          var name = inputs.sampleType + '-' + inputs.cancerType + '-' + inputs.signature[0] + '-to-' + inputs.signature[1] + '-corr.tsv'
+          var name = inputs.sampleType + '-' + inputs.cancerType + '-' + inputs.signature1 + '-to-' + inputs.signature2 + '-corr.tsv'
           self[0].basename = name;
           return self[0]
          }

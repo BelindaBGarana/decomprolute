@@ -19,8 +19,10 @@ inputs:
       type: string[]
    prot-algorithms:
       type: string[]
-   signatures:
-      type: string[]
+   signature1:
+      type: string
+   signature2:
+      type: string
       
 outputs:
    cell-cor-tab:
@@ -40,10 +42,11 @@ outputs:
 steps:
    run-all-algs-by-sig:
       run: call-deconv-and-cor.cwl
-      scatter: [signature,prot-alg,tissueType,cancerType]
+      scatter: [prot-alg,tissueType,cancerType]
       scatterMethod: flat_crossproduct
       in:
-        signature: signatures
+        signature1: signature1
+        signature2: signature2
         prot-alg: prot-algorithms
         cancerType: cancerTypes
         tissueType: tissueTypes

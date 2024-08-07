@@ -10,7 +10,8 @@ requirements:
   - class: InlineJavascriptRequirement
   
 inputs:
-   signature: string[]
+   signature1: string
+   signature2: string
    prot-alg: string
    cancerType: string
    tissueType: string
@@ -32,7 +33,7 @@ steps:
      in:
        cancerType: cancerType
        protAlg: prot-alg
-       signature: signature[0]
+       signature: signature1
        sampleType: tissueType
      out: [deconvoluted]
   deconv-prot2:
@@ -40,7 +41,7 @@ steps:
      in:
        cancerType: cancerType
        protAlg: prot-alg
-       signature: signature[1]
+       signature: signature2
        sampleType: tissueType
      out: [deconvoluted]
   sig-cor:
@@ -48,7 +49,8 @@ steps:
      in:
        cancerType: cancerType
        protAlg: prot-alg
-       signature: signature
+       signature1: signature1
+       signature2: signature2
        sampleType: tissueType
        proteomics1:
          source: deconv-prot1/deconvoluted
