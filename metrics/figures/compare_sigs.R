@@ -165,7 +165,7 @@ combineCellTypeCors<-function(file.list,metric='correlation'){
       ggplot(aes(x = signature1, y = signature2, fill = meanVal)) + geom_tile(height=1,width=1) +
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
                                         # ggplot(aes(x=matrix,y=value,fill=disease))+geo_violin()+
-      facet_grid(rows=vars(algorithm),cols=vars(disease))+
+      facet_grid(cols=vars(disease))+
     scale_fill_gradient(low=pal[1],high=pal[3])
   ggsave(paste0('heatmaps-', metric, 'averages.pdf'),p6)
 
