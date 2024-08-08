@@ -150,7 +150,7 @@ combineCellTypeCors<-function(file.list,metric='correlation'){
 
   #p<-cowplot::plot_grid(plotlist=plist)
 
-  mean.tab<-full.tab%>%group_by(tissue, disease, signature1, signature2)%>%
+  mean.tab<-full.tab%>%group_by(cellType, tissue, disease, signature1, signature2)%>%
     summarize(meanVal=mean(value,na.rm=T))
 
   # p4<-ggplot(mean.tab,aes(x=matrix,y=meanVal,fill=prot.algorithm))+geom_boxplot()+
@@ -165,7 +165,7 @@ combineCellTypeCors<-function(file.list,metric='correlation'){
       ggplot(aes(x = signature1, y = signature2, fill = meanVal)) + geom_tile(height=1,width=1) +
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
                                         # ggplot(aes(x=matrix,y=value,fill=disease))+geo_violin()+
-      facet_grid(cols=vars(disease))+
+      facet_grid(rows=vars(disease), cols=vars(cellType))+
     scale_fill_gradient(low=pal[1],high=pal[3])
   ggsave(paste0('heatmaps-', metric, 'averages.pdf'),p6)
 
