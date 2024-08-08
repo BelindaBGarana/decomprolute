@@ -17,9 +17,12 @@ inputs:
    tissueType: string
 
 outputs:
-  sig-cor-file:
+  patient-cor-file:
      type: File
-     outputSource: sig-cor/corr
+     outputSource: patient-cor/corr
+  celltype-cor-file:
+     type: File
+     outputSource: celltype-cor/corr
   prot-file1:
      type: File
      outputSource: deconv-prot1/deconvoluted
@@ -44,8 +47,21 @@ steps:
        signature: signature2
        sampleType: tissueType
      out: [deconvoluted]
-  sig-cor:
+  patient-cor:
      run: ../correlations/deconv-corr-cwl-tool-sigs.cwl
+     in:
+       cancerType: cancerType
+       protAlg: prot-alg
+       signature1: signature1
+       signature2: signature2
+       sampleType: tissueType
+       proteomics1:
+         source: deconv-prot1/deconvoluted
+       proteomics2:
+         source: deconv-prot2/deconvoluted
+     out: [corr]
+  celltype-cor:
+     run: ../correlations/deconv-corrXcelltypes-cwl-tool-sigs.cwl
      in:
        cancerType: cancerType
        protAlg: prot-alg
