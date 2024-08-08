@@ -132,17 +132,17 @@ combineCellTypeCors<-function(file.list,metric='correlation'){
   #   ggsave(paste0(mat,'cellType',metric,'sBars.pdf'),pa,width=10)
   # })
 
-  p1<-ggplot(full.tab,aes(x=matrix,y=value,fill=disease))+geom_boxplot()+
+  p1<-ggplot(full.tab,aes(x=algorithm,y=value,fill=disease))+geom_boxplot()+
     scale_fill_manual(values=pal)
   ggsave(paste0('allSigsDisease',metric,'.pdf'),p1,width=20,height=20)
 
-  p2<-ggplot(full.tab,aes(x=matrix,y=value,fill=cellType))+geom_boxplot()+
+  p2<-ggplot(full.tab,aes(x=algorithm,y=value,fill=cellType))+geom_boxplot()+
     #facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+
     scale_fill_manual(values=pal)+
           theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave(paste0('allSigsCellType',metric,'.pdf'),p2,width=20,height=20)
 
-  p3<-ggplot(full.tab,aes(x=cellType,y=value,fill=matrix))+geom_boxplot()+
+  p3<-ggplot(full.tab,aes(x=cellType,y=value,fill=algorithm))+geom_boxplot()+
     #facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+
     scale_fill_manual(values=pal)+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
