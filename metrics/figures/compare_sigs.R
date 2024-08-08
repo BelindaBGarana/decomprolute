@@ -50,7 +50,7 @@ combineResultsFiles<-function(file.list,colnamevals=c('patient','correlation')){
     }
     return(data.frame(tab,tissue,disease,signature1,signature2))
   }))
-  
+  full.tab$algorithm <- "wv"
   return(full.tab)
 }
 
@@ -68,7 +68,7 @@ combinePatientCors<-function(file.list,metric='correlation'){
       subset(matrix==mat)%>%
       ggplot()+
       geom_violin(aes(x=tissue,y=value,fill=disease))+
-      facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+
+      facet_grid(rows=vars(signature1),cols=vars(signature2))+
       scale_fill_manual(values=pal)+
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
     ggsave(paste0(mat,'patient',metric,'s.pdf'),p,width=12,height=12)
@@ -76,11 +76,11 @@ combinePatientCors<-function(file.list,metric='correlation'){
 
   p2<-full.tab%>%
     ggplot(aes(x=matrix,y=value,fill=disease))+geom_violin()+
-    facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+scale_fill_manual(values=pal)
+    facet_grid(rows=vars(signature1),cols=vars(signature2))+scale_fill_manual(values=pal)
   ggsave(paste0('allSigsPatient',metric,'.pdf'),p2,width=12,height=12)
 
   mean.tab<-full.tab%>%
-    group_by(tissue,disease,mrna.algorithm,prot.algorithm,matrix)%>%
+    group_by(tissue,disease,signature1,signature2)%>%
     summarize(meanVal=mean(value,na.rm=T))
 
   p3<-ggplot(mean.tab,aes(x=matrix,shape=tissue,y=meanVal,col=disease))+geom_jitter()+
@@ -101,69 +101,72 @@ combineCellTypeCors<-function(file.list,metric='correlation'){
   mats<-unique(c(full.tab$signature1, full.tab$signature2))
   #  require(cowplot)
 
-  fc<-ggplot(full.tab,aes(x=cellType,y=value,fill=as.factor(sample)))+geom_boxplot()+facet_grid(algorithm~matrix)+scale_fill_manual(values=pal)+
+  fc<-ggplot(full.tab,aes(x=cellType,y=value,fill=as.factor(disease)))+geom_boxplot()+scale_fill_manual(values=pal)+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   
   ggsave(paste0('cellType',metric,'AllSamples.pdf'),fc,width=10)
   
-  lapply(mats,function(mat){
-    ft<-full.tab%>%subset(matrix==mat)|>
-      subset(sample==max(full.tab$sample))
-    ft$cellType<-factor(ft$cellType)
-
-    print(head(ft))
-    p<-ggplot(ft)+geom_boxplot(aes(x=cellType,y=value,fill=mrna.algorithm))+
-      scale_fill_manual(values=pal)+facet_grid(cols=vars(prot.algorithm),rows=vars(sample))+
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-      ggtitle(mat)
-    ggsave(paste0(mat,'cellType',metric,'sProtbp.pdf'),p,width=10)
-
-    p<-ggplot(ft)+geom_boxplot(aes(x=cellType,y=value,fill=prot.algorithm))+
-      scale_fill_manual(values=pal)+facet_grid(cols=vars(mrna.algorithm),rows=vars(sample))+
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-      ggtitle(mat)
-    ggsave(paste0(mat,'cellType',metric,'sMrnabp.pdf'),p,width=10)
-
-    pa<-ggplot(ft)+geom_bar(aes(x=cellType,y=value,fill=as.factor(disease)),stat='identity',position='dodge')+
-      facet_grid(cols=vars(prot.algorithm),rows=vars(mrna.algorithm))+scale_fill_manual(values=pal)+
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-      ggtitle(mat)
-
-    ggsave(paste0(mat,'cellType',metric,'sBars.pdf'),pa,width=10)
-  })
+  # lapply(mats,function(mat){
+  #   ft<-full.tab%>%subset(matrix==mat)|>
+  #     subset(sample==max(full.tab$sample))
+  #   ft$cellType<-factor(ft$cellType)
+  # 
+  #   print(head(ft))
+  #   p<-ggplot(ft)+geom_boxplot(aes(x=cellType,y=value,fill=mrna.algorithm))+
+  #     scale_fill_manual(values=pal)+facet_grid(cols=vars(prot.algorithm),rows=vars(sample))+
+  #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  #     ggtitle(mat)
+  #   ggsave(paste0(mat,'cellType',metric,'sProtbp.pdf'),p,width=10)
+  # 
+  #   p<-ggplot(ft)+geom_boxplot(aes(x=cellType,y=value,fill=prot.algorithm))+
+  #     scale_fill_manual(values=pal)+facet_grid(cols=vars(mrna.algorithm),rows=vars(sample))+
+  #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  #     ggtitle(mat)
+  #   ggsave(paste0(mat,'cellType',metric,'sMrnabp.pdf'),p,width=10)
+  # 
+  #   pa<-ggplot(ft)+geom_bar(aes(x=cellType,y=value,fill=as.factor(disease)),stat='identity',position='dodge')+
+  #     facet_grid(cols=vars(prot.algorithm),rows=vars(mrna.algorithm))+scale_fill_manual(values=pal)+
+  #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  #     ggtitle(mat)
+  # 
+  #   ggsave(paste0(mat,'cellType',metric,'sBars.pdf'),pa,width=10)
+  # })
 
   p1<-ggplot(full.tab,aes(x=matrix,y=value,fill=disease))+geom_boxplot()+
-    facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+scale_fill_manual(values=pal)
+    scale_fill_manual(values=pal)
   ggsave(paste0('allSigsDisease',metric,'.pdf'),p1,width=20,height=20)
 
   p2<-ggplot(full.tab,aes(x=matrix,y=value,fill=cellType))+geom_boxplot()+
-    facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+scale_fill_manual(values=pal)+
+    #facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+
+    scale_fill_manual(values=pal)+
           theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave(paste0('allSigsCellType',metric,'.pdf'),p2,width=20,height=20)
 
   p3<-ggplot(full.tab,aes(x=cellType,y=value,fill=matrix))+geom_boxplot()+
-    facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+scale_fill_manual(values=pal)+
+    #facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+
+    scale_fill_manual(values=pal)+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave(paste0('allSigsMatrix',metric,'.pdf'),p3,width=20,height=20)
 
   #p<-cowplot::plot_grid(plotlist=plist)
 
-  mean.tab<-full.tab%>%group_by(tissue,disease,mrna.algorithm,prot.algorithm,matrix)%>%
+  mean.tab<-full.tab%>%group_by(tissue,disease)%>%
     summarize(meanVal=mean(value,na.rm=T))
 
-  p4<-ggplot(mean.tab,aes(x=matrix,y=meanVal,fill=prot.algorithm))+geom_boxplot()+
-    facet_grid(cols=vars(mrna.algorithm))+scale_fill_manual(values=pal)
-  ggsave(paste0('cellType',metric,'BoxplotMrna-averages.pdf'),p4)
-
-  p5<-ggplot(mean.tab,aes(x=matrix,y=meanVal,fill=mrna.algorithm))+geom_boxplot()+
-    facet_grid(cols=vars(prot.algorithm))+scale_fill_manual(values=pal)
-  ggsave(paste0('cellType',metric,'BoxplotProt-averages.pdf'),p5)
+  # p4<-ggplot(mean.tab,aes(x=matrix,y=meanVal,fill=prot.algorithm))+geom_boxplot()+
+  #   facet_grid(cols=vars(mrna.algorithm))+scale_fill_manual(values=pal)
+  # ggsave(paste0('cellType',metric,'BoxplotMrna-averages.pdf'),p4)
+  # 
+  # p5<-ggplot(mean.tab,aes(x=matrix,y=meanVal,fill=mrna.algorithm))+geom_boxplot()+
+  #   facet_grid(cols=vars(prot.algorithm))+scale_fill_manual(values=pal)
+  # ggsave(paste0('cellType',metric,'BoxplotProt-averages.pdf'),p5)
 
   p6<-mean.tab%>%
-      ggplot(aes(x = mrna.algorithm, y = prot.algorithm, fill = meanVal)) + geom_tile(height=1,width=1) +
+      ggplot(aes(x = signature1, y = signature2, fill = meanVal)) + geom_tile(height=1,width=1) +
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
                                         # ggplot(aes(x=matrix,y=value,fill=disease))+geo_violin()+
-      facet_grid(rows=vars(matrix),cols=vars(disease))+scale_fill_gradient(low=pal[1],high=pal[3])
+      facet_grid(rows=vars(algorithm),cols=vars(disease))+
+    scale_fill_gradient(low=pal[1],high=pal[3])
   ggsave(paste0('heatmaps-', metric, 'averages.pdf'),p6)
 
 
