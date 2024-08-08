@@ -51,13 +51,13 @@ steps:
         cancerType: cancerTypes
         tissueType: tissueTypes
       out:
-        [sig-cor-file,prot-file1,prot-file2]
+        [patient-cor-file,celltype-cor-file,prot-file1,prot-file2]
    get-celltype-cors:
       run: ../figures/plot-figs-sigs.cwl
       in:
         metricType:
             valueFrom: "cellType"
         files:
-            source: run-all-algs-by-sig/sig-cor-file
+            source: run-all-algs-by-sig/celltype-cor-file
       out:
         [table,fig]
