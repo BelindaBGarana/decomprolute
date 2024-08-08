@@ -53,7 +53,7 @@ steps:
       out:
         [sig-cor-file,prot-file1,prot-file2]
    get-celltype-cors:
-      run: ../figures/plot-figs.cwl
+      run: ../figures/plot-figs-sigs.cwl
       in:
         metricType:
             valueFrom: "cellType"
