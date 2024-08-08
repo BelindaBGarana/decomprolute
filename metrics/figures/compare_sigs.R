@@ -98,7 +98,7 @@ combineCellTypeCors<-function(file.list,metric='correlation'){
     dplyr::rename(value=metric)
   print(head(full.tab))
   
-  mats<-unique(c(full.tab$signature1, full.tab$signature2))
+  #mats<-unique(c(full.tab$signature1, full.tab$signature2))
   #  require(cowplot)
 
   fc<-ggplot(full.tab,aes(x=cellType,y=value,fill=as.factor(disease)))+geom_boxplot()+scale_fill_manual(values=pal)+
@@ -150,7 +150,7 @@ combineCellTypeCors<-function(file.list,metric='correlation'){
 
   #p<-cowplot::plot_grid(plotlist=plist)
 
-  mean.tab<-full.tab%>%group_by(tissue,disease)%>%
+  mean.tab<-full.tab%>%group_by(tissue, disease, signature1, signature2)%>%
     summarize(meanVal=mean(value,na.rm=T))
 
   # p4<-ggplot(mean.tab,aes(x=matrix,y=meanVal,fill=prot.algorithm))+geom_boxplot()+
