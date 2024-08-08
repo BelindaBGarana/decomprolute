@@ -1,20 +1,19 @@
 #!/usr/bin/env cwltool
 
-label: deconv-corr-cwl-tool-sigs
-id:  deconv-corr-cwl-tool-sigs
+label: deconv-corrXcelltypes-cwl-tool-sigs
+id:  deconv-corrXcelltypes-cwl-tool-sigs
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: python
 
 arguments:
-  - /bin/correlation-sigs.py
+  - /bin/correlationXcelltypes-sigs.py
 
 requirements:
   - class: DockerRequirement
     dockerPull: correlations:latest
-  - class: StepInputExpressionRequirement
   - class: InlineJavascriptRequirement
-
+  
 inputs:
   proteomics1:
     type: File
@@ -24,30 +23,36 @@ inputs:
     type: File
     inputBinding:
       prefix: --proteomics2
+  protAlg:
+    type: string
+  cancerType:
+    type: string
   spearOrPears:
     type: string
     inputBinding:
       prefix: --spearOrPears
     default: "spearman"
-  cancerType:
-    type: string
-  protAlg:
-    type: string
   signature1:
     type: string
   signature2:
     type: string
+  sampleVal:
+    type: int
+    default: 100
   sampleType:
     type: string
+  sampleRep:
+    type: int
+    default: 0
 
 outputs:
   corr:
     type: File
     outputBinding:
-      glob: "corr.tsv" 
+      glob: "corrXcelltypes.tsv" #$(inputs.output)
       outputEval: |
         ${
-          var name = inputs.sampleType + '-' + inputs.cancerType + '-' + inputs.signature1 + '-to-' + inputs.signature2 + '-corr.tsv'
+          var name = inputs.sampleType + '-' + inputs.cancerType + '-' + inputs.signature1 + '-to-' + inputs.signature2 +'-'+ inputs.sampleVal + '-sample-' + inputs.sampleRep +'-cellTypecorr.tsv'
           self[0].basename = name;
           return self[0]
          }
