@@ -18,7 +18,7 @@ library(nationalparkcolors)
 library(reshape2)
 library(plotly)
 library(htmlwidgets); library(webshot)
-#webshot::install_phantomjs()
+webshot::install_phantomjs()
 # pal<-c(park_palette('GeneralGrant'), park_palette('Redwoods'))
 
 ##here is the color scheme

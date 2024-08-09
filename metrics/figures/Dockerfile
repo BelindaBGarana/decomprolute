@@ -11,11 +11,14 @@ WORKDIR $SRC
 RUN Rscript -e 'install.packages("remotes",dependences=TRUE); remotes::install_github("katiejolly/nationalparkcolors")'
 RUN Rscript -e 'install.packages("readxl",dependencies=TRUE)'
 RUN Rscript -e 'install.packages("tidyr",dependencies=TRUE)'
+RUN Rscript -e 'install.packages("plyr",dependencies=TRUE)'
 RUN Rscript -e 'install.packages("dplyr",dependencies=TRUE)'
 RUN Rscript -e 'install.packages("argparser",dependencies=TRUE)'
 RUN Rscript -e 'install.packages("cowplot",dependencies=TRUE)'
 RUN Rscript -e 'install.packages("viridis",dependencies=TRUE)'
 RUN Rscript -e 'install.packages("reshape2",dependencies=TRUE)'
+RUN Rscript -e 'install.packages("htmlwidgets",dependencies=TRUE)'
+RUN Rscript -e 'install.packages("webshot",dependencies=TRUE)'
 
 
 
