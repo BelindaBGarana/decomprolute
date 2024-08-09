@@ -17,8 +17,9 @@ library(ggplot2)
 library(nationalparkcolors)
 library(reshape2)
 library(plotly)
-library(htmlwidgets); library(webshot)
-webshot::install_phantomjs()
+library(htmlwidgets)
+#library(webshot)
+#webshot::install_phantomjs()
 # pal<-c(park_palette('GeneralGrant'), park_palette('Redwoods'))
 
 ##here is the color scheme
@@ -205,7 +206,7 @@ combineCellTypeVals<-function(file.list){
   )
   temp.fname <- "cellTypeTernary"
   saveWidget(tern.fig, paste0(temp.fname,".html"))
-  webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf"))
+  #webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf"))
   
   for (i in methods) {
     filtered.df <- tern.df[tern.df$method==i,]
@@ -234,7 +235,7 @@ combineCellTypeVals<-function(file.list){
       )
     temp.fname <- paste0("cellTypeTernary_",i)
     saveWidget(tern.fig, paste0(temp.fname,".html"))
-    webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf")) 
+    #webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf")) 
   }
   
   # count % of samples correctly guessed for each signature
