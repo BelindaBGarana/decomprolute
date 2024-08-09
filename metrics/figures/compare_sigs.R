@@ -100,7 +100,7 @@ combineCellTypeVals<-function(file.list){
   print(head(full.tab))
   
   # plot data
-  fc<-ggplot(full.tab,aes(x=cellType,y=wv,fill=knownCellType))+geom_bar()+scale_fill_manual(values=pal)+
+  fc<-ggplot(full.tab,aes(x=cellType,y=wv,fill=knownCellType))+geom_bar(stat='identity')+scale_fill_manual(values=pal)+
     facet_grid(rows=vars(signature),cols=vars(method))+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave(paste0('cellTypeValueAllSamples.pdf'),fc,width=10)
