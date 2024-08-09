@@ -75,8 +75,6 @@ steps:
         metric:
             valueFrom: "value"
         files:
-            source:
-              - run-all-algs-by-sig/prot-file1
-              - run-all-algs-by-sig/prot-file2
+            source: [run-all-algs-by-sig/prot-file1,run-all-algs-by-sig/prot-file2]
       out:
         [table,fig]
