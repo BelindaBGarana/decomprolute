@@ -76,5 +76,6 @@ steps:
             valueFrom: "value"
         files:
             source: [run-all-algs-by-sig/prot-file1,run-all-algs-by-sig/prot-file2]
+            linkMerge: merge_flattened
       out:
         [table,fig]
