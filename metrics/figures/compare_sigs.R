@@ -10,11 +10,15 @@
 #' Rscript  combine_results.R --metricType sample --metric meanCorrelation  --repNumber 0 */*corr.tsv
 #' Rscript  combine_results.R --metricType cellType --metric meanCorrelation  --repNumber 0  */*corrXcelltypes.tsv
 #' Rscript  combine_results.R --metricType js --metric distance  --repNumber 0  */*dist.tsv
-
+library(plyr)
 library(dplyr)
 library(argparser)
 library(ggplot2)
 library(nationalparkcolors)
+library(reshape2)
+library(plotly)
+library(htmlwidgets); library(webshot)
+#webshot::install_phantomjs()
 # pal<-c(park_palette('GeneralGrant'), park_palette('Redwoods'))
 
 ##here is the color scheme
@@ -54,6 +58,222 @@ combineResultsFiles<-function(file.list,colnamevals=c('patient','correlation')){
   return(full.tab)
 }
 
+combineValFiles<-function(file.list,colnamevals=c('cellType')){
+  
+  message(paste0('Combining ',length(file.list),' files'))
+  
+  ##first we read in each file and make int a single table
+  full.tab<-do.call(rbind,lapply(file.list,function(file){
+    # extract metadata from filename
+    vars <- unlist(strsplit(basename(file),split='-')) #split into pieces
+    message("vars are ", paste0(vars, sep=" "))
+    tissue=vars[2]
+    disease=vars[1]
+    signature=vars[6]
+    
+    # import data
+    tab<-read.table(file,fill=TRUE,sep = '\t',check.names=FALSE)
+    colnames(tab)[1]<-colnamevals[1]
+    
+    # convert data from wide to long format
+    tab <- reshape2::melt(tab, id.vars=colnamesvals[1], variable.name="sample",
+                          value.name="wv")
+    
+    # extract more metadata
+    disease.info <- strsplit(disease, split="_")[[1]]
+    tab$cancerType <- disease.info[1] # "AML"
+    tab$knownCellType <- disease.info[2] # e.g., "Monocyte"
+    tab$method <- disease.info[3] # e.g., "DIA" (MS method)
+    
+    return(data.frame(tab,tissue,disease,signature))
+  }))
+  full.tab[full.tab$signature == "AML_sorted_100.tsv",]$signature <- "sorted proteomics"
+  full.tab[full.tab$signature == "AML_vanGalen_100.tsv",]$signature <- "single-cell transcriptomics" # van Galen et al, 2019
+  return(full.tab)
+}
+
+#' combine list of files by cell type values
+combineCellTypeVals<-function(file.list){
+  # import & format data
+  full.tab<-combineValFiles(file.list,colnamevals=c('cellType'))
+  print(head(full.tab))
+  
+  # plot data
+  fc<-ggplot(full.tab,aes(x=cellType,y=wv,fill=knownCellType))+geom_bar()+scale_fill_manual(values=pal)+
+    facet_grid(rows=vars(signature),cols=vars(method))+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  ggsave(paste0('cellTypeValueAllSamples.pdf'),fc,width=10)
+  
+  # calculate p-values (e.g., if monocyte score is higher than others for known monocytes)
+  cellType <- sort(unique(full.tab$cellType))
+  knownCellTypes <- sort(unique(full.tab$knownCellType))
+  p.tab <- data.frame(cellType)
+  p.types <- c("overall","DIA","TMT","van_Galen","sorted")
+  p.tab[,p.types] <- NA
+  for (i in 1:length(knownCellTypes)) {
+    overall.tab <- full.tab[full.tab$knownCellType == knownCellTypes[i],]
+    p.overall <- t.test(overall.tab[overall.tab$cellType == cellType[i],], 
+                        overall.tab[overall.tab$cellType != cellType[i],])$p.value
+    
+    DIA.tab <- overall.tab[overall.tab$method == "DIA",]
+    p.DIA <- t.test(DIA.tab[DIA.tab$cellType == cellType[i],], 
+                        DIA.tab[DIA.tab$cellType != cellType[i],])$p.value
+    
+    TMT.tab <- overall.tab[overall.tab$method == "TMT",]
+    p.TMT <- t.test(TMT.tab[TMT.tab$cellType == cellType[i],], 
+                        TMT.tab[TMT.tab$cellType != cellType[i],])$p.value
+    
+    vg.tab <- overall.tab[overall.tab$signature == "single-cell transcriptomics",]
+    p.vg <- t.test(vg.tab[vg.tab$cellType == cellType[i],], 
+                    vg.tab[vg.tab$cellType != cellType[i],])$p.value
+    
+    sorted.tab <- overall.tab[overall.tab$signature == "sorted proteomics",]
+    p.sorted <- t.test(sorted.tab[sorted.tab$cellType == cellType[i],], 
+                       sorted.tab[sorted.tab$cellType != cellType[i],])$p.value
+    
+    p.tab[p.tab$cellType == cellType[i],p.types] <- c(p.overall, p.DIA, p.TMT, p.vg, p.sorted)
+  }
+  write.table(p.tab,'pValues_knownCellType.tsv',row.names=F,col.names=T)
+  
+  # identify samples correctly classified by each method
+  methods <- unique(full.tab$method)
+  signatures <- unique(full.tab$signature)
+  full.tab$predictedCellType <- NA
+  full.tab$correctPrediction <- NA
+  for (i in methods) {
+    method.tab <- full.tab[full.tab$method == i,]
+    samples <- unique(method.tab$sample)
+    for (j in samples) {
+      sample.tab <- method.tab[method.tab$sample == j,]
+      for (k in signatures) {
+        sig.tab <- sample.tab[sample.tab$signature == k,]
+        
+        # identify prediction
+        prediction <- sig.tab[sig.tab$wv == max(sig.tab$wv),]$cellType
+        full.tab[full.tab$method == i & 
+                   full.tab$sample == j & 
+                   full.tab$signature == k,]$predictedCellType <- prediction
+        
+        # determine if it was accurate
+        acc <- which(knownCellTypes == prediction) == which(cellType == prediction) # assuming order of cell types match
+        full.tab[full.tab$method == i & 
+                     full.tab$sample == j & 
+                     full.tab$signature == k,]$correctPrediction <- acc
+      }
+    }
+  }
+  write.table(p.tab,'accuracy_knownCellType.tsv',row.names=F,col.names=T)
+  
+  # create ternary plot (corners are Monocyte, Progenitor, MSC)
+  tern.df <- reshape2::dcast(full.tab, sample + method + knownCellType + signature ~ cellType, value.var="wv")
+  axis <- function(title) {
+    list(
+      title = title,
+      titlefont = list(
+        size = 20
+      ),
+      tickfont = list(
+        size = 15
+      ),
+      tickcolor = 'rgba(0,0,0,0)',
+      ticklen = 5
+    )
+  }
+  
+  tern.fig <- tern.df %>% plot_ly() %>% add_trace(
+    type = 'scatterternary', mode = 'markers',
+    a = ~Monocytle-like,
+    b = ~Progenitor-like,
+    c = ~MSC-like,
+    marker = list(
+      #colorscale = pal,
+      color = ~knownCellType,
+      shape = ~signature,
+      symbol = 100,
+      size = 14,
+      line = list('width' = 2),
+      showscale = TRUE
+    )
+  ) %>% layout(
+    title = "",
+    ternary = list(
+      sum = 100,
+      aaxis = axis('Monocyte-like'),
+      baxis = axis('Progenitor-like'),
+      caxis = axis('MSC-like')
+    )
+  )
+  temp.fname <- "cellTypeTernary"
+  saveWidget(tern.fig, paste0(temp.fname,".html"))
+  webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf"))
+  
+  for (i in methods) {
+    filtered.df <- tern.df[tern.df$method==i,]
+    tern.fig <- filtered.df %>% plot_ly() %>% add_trace(
+        type = 'scatterternary', mode = 'markers',
+        a = ~Monocytle-like,
+        b = ~Progenitor-like,
+        c = ~MSC-like,
+        marker = list(
+          #colorscale = pal,
+          color = ~knownCellType,
+          shape = ~method,
+          symbol = 100,
+          size = 14,
+          line = list('width' = 2),
+          showscale = TRUE
+        )
+      ) %>% layout(
+        title = i,
+        ternary = list(
+          sum = 100,
+          aaxis = axis('Monocyte-like'),
+          baxis = axis('Progenitor-like'),
+          caxis = axis('MSC-like')
+        )
+      )
+    temp.fname <- paste0("cellTypeTernary_",i)
+    saveWidget(tern.fig, paste0(temp.fname,".html"))
+    webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf")) 
+  }
+  
+  # count % of samples correctly guessed for each signature
+  agg.tab1 <- plyr::ddply(full.tab, .(signature), summarize,
+                         N_correct = sum(correctPrediction, na.rm = TRUE),
+                         N_total = length(na.omit(correctPrediction)))
+  agg.tab1$percent_correct <- 100*agg.tab1$N_correct/agg.tab1$N_total
+  
+  perc.agg1 <- ggplot2::ggplot(agg.tab1, aes(x=signature, y=percent_correct))+
+    geom_bar()+scale_fill_manual(values=pal)+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  ggsave('cellTypeAccuracy_by_signature.pdf',perc.agg1,width=10)
+  
+  # count % of samples correctly guessed for each signature, method
+  agg.tab2 <- plyr::ddply(full.tab, .(signature, method), summarize,
+                          N_correct = sum(correctPrediction, na.rm = TRUE),
+                          N_total = length(na.omit(correctPrediction)))
+  agg.tab2$percent_correct <- 100*agg.tab2$N_correct/agg.tab2$N_total
+  
+  perc.agg2 <- ggplot2::ggplot(agg.tab2, aes(x=signature, y=percent_correct))+
+    geom_bar()+scale_fill_manual(values=pal)+
+    facet_grid(rows=vars(method))+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  ggsave('cellTypeAccuracy_by_signature-method.pdf',perc.agg2,width=10)
+  
+  # also count % of correctly categorized samples for each cell type
+  agg.tab3 <- plyr::ddply(full.tab, .(signature, method, knownCellType), summarize,
+                          N_correct = sum(correctPrediction, na.rm = TRUE),
+                          N_total = length(na.omit(correctPrediction)))
+  agg.tab3$percent_correct <- 100*agg.tab3$N_correct/agg.tab3$N_total
+  
+  perc.agg3 <- ggplot2::ggplot(agg.tab3, aes(x=signature, y=percent_correct))+
+    geom_bar()+scale_fill_manual(values=pal)+
+    facet_grid(rows=vars(method),cols=vars(knownCellType))+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  ggsave('cellTypeAccuracy_by_signature-method-knownCellType.pdf',perc.agg3,width=10)
+  
+  return(full.tab)
+}
 
 #' combine list of files of patient correlations
 #' patient correlations represent how similar the cell type distribution is on a per-patient value, by cancer
@@ -90,86 +310,18 @@ combinePatientCors<-function(file.list,metric='correlation'){
   return(full.tab)
 }
 
-
 #' combine list of files by cell type correlations
 combineCellTypeCors<-function(file.list,metric='correlation'){
   
   full.tab<-combineResultsFiles(file.list,colnamevals=c('cellType',metric))|>
     dplyr::rename(value=metric)
   print(head(full.tab))
-  
-  #mats<-unique(c(full.tab$signature1, full.tab$signature2))
-  #  require(cowplot)
 
-  fc<-ggplot(full.tab,aes(x=cellType,y=value,fill=as.factor(disease)))+geom_boxplot()+scale_fill_manual(values=pal)+
+  fc<-ggplot(full.tab,aes(x=cellType,y=value,fill=disease))+geom_boxplot()+scale_fill_manual(values=pal)+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   
   ggsave(paste0('cellType',metric,'AllSamples.pdf'),fc,width=10)
   
-  # lapply(mats,function(mat){
-  #   ft<-full.tab%>%subset(matrix==mat)|>
-  #     subset(sample==max(full.tab$sample))
-  #   ft$cellType<-factor(ft$cellType)
-  # 
-  #   print(head(ft))
-  #   p<-ggplot(ft)+geom_boxplot(aes(x=cellType,y=value,fill=mrna.algorithm))+
-  #     scale_fill_manual(values=pal)+facet_grid(cols=vars(prot.algorithm),rows=vars(sample))+
-  #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-  #     ggtitle(mat)
-  #   ggsave(paste0(mat,'cellType',metric,'sProtbp.pdf'),p,width=10)
-  # 
-  #   p<-ggplot(ft)+geom_boxplot(aes(x=cellType,y=value,fill=prot.algorithm))+
-  #     scale_fill_manual(values=pal)+facet_grid(cols=vars(mrna.algorithm),rows=vars(sample))+
-  #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-  #     ggtitle(mat)
-  #   ggsave(paste0(mat,'cellType',metric,'sMrnabp.pdf'),p,width=10)
-  # 
-  #   pa<-ggplot(ft)+geom_bar(aes(x=cellType,y=value,fill=as.factor(disease)),stat='identity',position='dodge')+
-  #     facet_grid(cols=vars(prot.algorithm),rows=vars(mrna.algorithm))+scale_fill_manual(values=pal)+
-  #     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-  #     ggtitle(mat)
-  # 
-  #   ggsave(paste0(mat,'cellType',metric,'sBars.pdf'),pa,width=10)
-  # })
-
-  p1<-ggplot(full.tab,aes(x=cellType,y=value,fill=disease))+geom_boxplot()+
-    scale_fill_manual(values=pal)
-  ggsave(paste0('allSigsDisease',metric,'.pdf'),p1,width=20,height=20)
-
-  # p2<-ggplot(full.tab,aes(x=algorithm,y=value,fill=cellType))+geom_boxplot()+
-  #   #facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+
-  #   scale_fill_manual(values=pal)+
-  #         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-  # ggsave(paste0('allSigsCellType',metric,'.pdf'),p2,width=20,height=20)
-  # 
-  # p3<-ggplot(full.tab,aes(x=cellType,y=value,fill=algorithm))+geom_boxplot()+
-  #   #facet_grid(rows=vars(mrna.algorithm),cols=vars(prot.algorithm))+
-  #   scale_fill_manual(values=pal)+
-  #   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-  # ggsave(paste0('allSigsMatrix',metric,'.pdf'),p3,width=20,height=20)
-
-  #p<-cowplot::plot_grid(plotlist=plist)
-
-  mean.tab<-full.tab%>%group_by(cellType, tissue, disease, signature1, signature2)%>%
-    summarize(meanVal=mean(value,na.rm=T))
-
-  # p4<-ggplot(mean.tab,aes(x=matrix,y=meanVal,fill=prot.algorithm))+geom_boxplot()+
-  #   facet_grid(cols=vars(mrna.algorithm))+scale_fill_manual(values=pal)
-  # ggsave(paste0('cellType',metric,'BoxplotMrna-averages.pdf'),p4)
-  # 
-  # p5<-ggplot(mean.tab,aes(x=matrix,y=meanVal,fill=mrna.algorithm))+geom_boxplot()+
-  #   facet_grid(cols=vars(prot.algorithm))+scale_fill_manual(values=pal)
-  # ggsave(paste0('cellType',metric,'BoxplotProt-averages.pdf'),p5)
-
-  p6<-mean.tab%>%
-      ggplot(aes(x = signature1, y = signature2, fill = meanVal)) + geom_tile(height=1,width=1) +
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-                                        # ggplot(aes(x=matrix,y=value,fill=disease))+geo_violin()+
-      facet_grid(rows=vars(disease), cols=vars(cellType))+
-    scale_fill_gradient(low=pal[1],high=pal[3])
-  ggsave(paste0('heatmaps-', metric, 'averages.pdf'),p6)
-
-
   return(full.tab)
 }
 
@@ -326,6 +478,8 @@ main<-function(){
     tab<-combineDists(file.list,metric,metricType)
     print(dim(tab))
     write.table(tab,paste0('combined-', metricType, '-', metric,'-',repNumber,'.tsv'),row.names=F,col.names=T)
+  }else if(metric =='value'){
+    
   }else{
     print("First argument must be metricType and second must be metric name")
 
