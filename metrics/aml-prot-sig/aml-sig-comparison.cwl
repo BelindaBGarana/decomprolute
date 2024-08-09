@@ -68,7 +68,7 @@ steps:
       out:
         [table,fig]
    get-celltype-vals:
-      run: ../figures/plot-figs-sigs.cwl
+      run: ../figures/plot-figs-sigs-vals.cwl
       in:
         metricType:
             valueFrom: "cellType"
