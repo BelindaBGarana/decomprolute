@@ -72,7 +72,7 @@ steps:
       in:
         metricType:
             valueFrom: "cellType"
-	metric:
+        metric:
             valueFrom: "value"
         files:
             source: [run-all-algs-by-prot/prot-file1, run-all-algs-by-prot/prot-file2]
