@@ -77,7 +77,7 @@ combineValFiles<-function(file.list,colnamevals=c('cellType')){
     colnames(tab)[1]<-colnamevals[1]
     
     # convert data from wide to long format
-    tab <- reshape2::melt(tab, id.vars=colnamesvals[1], variable.name="sample",
+    tab <- reshape2::melt(tab, id.vars=colnamevals[1], variable.name="sample",
                           value.name="wv")
     
     # extract more metadata
