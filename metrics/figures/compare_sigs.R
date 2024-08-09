@@ -480,7 +480,9 @@ main<-function(){
     print(dim(tab))
     write.table(tab,paste0('combined-', metricType, '-', metric,'-',repNumber,'.tsv'),row.names=F,col.names=T)
   }else if(metric =='value'){
-    
+    tab <- combineCellTypeVals(file.list)
+    print(dim(tab))
+    write.table(tab,paste0('combined-', metricType, '-', metric,'-',repNumber,'.tsv'),row.names=F,col.names=T)
   }else{
     print("First argument must be metricType and second must be metric name")
 
