@@ -36,9 +36,7 @@ inputs:
 
 outputs:
    table:
-     type:
-       type: array
-       items: File
+     type: File
      outputBinding:
         glob: "*.tsv"
    fig:
