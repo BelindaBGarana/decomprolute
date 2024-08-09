@@ -31,6 +31,12 @@ outputs:
    cell-fig:
       type: File[]
       outputSource: get-celltype-cors/fig
+   cell-val-tab:
+      type: File[]
+      outputSource: get-celltype-vals/table
+   cell-val-fig:
+      type: File[]
+      outputSource: get-celltype-vals/fig
    prot-files1:
       type: File[]
       outputSource: run-all-algs-by-sig/prot-file1
@@ -59,5 +65,18 @@ steps:
             valueFrom: "cellType"
         files:
             source: run-all-algs-by-sig/celltype-cor-file
+      out:
+        [table,fig]
+   get-celltype-vals:
+      run: ../figures/plot-figs-sigs.cwl
+      in:
+        metricType:
+            valueFrom: "cellType"
+	metric:
+            valueFrom: "value"
+        files:
+            source:
+              - run-all-algs-by-mrna/prot-file1
+              - run-all-algs-by-prot/prot-file2
       out:
         [table,fig]
