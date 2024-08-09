@@ -1,8 +1,8 @@
 #!/usr/bin/env cwltool
 
 class: CommandLineTool
-label: plot-figs
-id: plot-figs
+label: plot-figs-sigs
+id: plot-figs-sigs
 cwlVersion: v1.2
 baseCommand: Rscript
 
