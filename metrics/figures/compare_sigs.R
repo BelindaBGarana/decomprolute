@@ -114,25 +114,49 @@ combineCellTypeVals<-function(file.list){
   for (i in 1:length(knownCellTypes)) {
     overall.tab <- full.tab[full.tab$knownCellType == knownCellTypes[i],]
     p.overall <- t.test(overall.tab[overall.tab$cellType == cellType[i],], 
-                        overall.tab[overall.tab$cellType != cellType[i],])$p.value
+                        overall.tab[overall.tab$cellType != cellType[i],],
+                        alternative = "greater")$p.value
     
-    DIA.tab <- overall.tab[overall.tab$method == "DIA",]
-    p.DIA <- t.test(DIA.tab[DIA.tab$cellType == cellType[i],], 
-                        DIA.tab[DIA.tab$cellType != cellType[i],])$p.value
-    
-    TMT.tab <- overall.tab[overall.tab$method == "TMT",]
-    p.TMT <- t.test(TMT.tab[TMT.tab$cellType == cellType[i],], 
-                        TMT.tab[TMT.tab$cellType != cellType[i],])$p.value
-    
-    vg.tab <- overall.tab[overall.tab$signature == "single-cell transcriptomics",]
-    p.vg <- t.test(vg.tab[vg.tab$cellType == cellType[i],], 
-                    vg.tab[vg.tab$cellType != cellType[i],])$p.value
-    
-    sorted.tab <- overall.tab[overall.tab$signature == "sorted proteomics",]
-    p.sorted <- t.test(sorted.tab[sorted.tab$cellType == cellType[i],], 
-                       sorted.tab[sorted.tab$cellType != cellType[i],])$p.value
-    
-    p.tab[p.tab$cellType == cellType[i],p.types] <- c(p.overall, p.DIA, p.TMT, p.vg, p.sorted)
+    filt.p <- c()
+    filter.val <- c("DIA", "TMT", "single-cell transcriptomics",
+                    "sorted proteomics")
+    filter.var <- c("method", "method", "signature", "signature")
+    for (j in 1:length(filter.val)) {
+      filt.tab <- overall.tab[overall.tab[,filter.var[j]] == filter.val[j],]
+      vals.of.interest <- filt.tab[filt.tab$cellType == cellType[i],]
+      other.vals <- filt.tab[filt.tab$cellType != cellType[i],]
+      
+      message("For filter ", filter.var[j], " == ", filter.val[j], " there are ",
+              length(vals.of.interest), " values for ", knownCellTypes[i],
+              " and ", length(other.vals), " values for other cell types")
+      if (length(vals.of.interest) > 1 & length(other.vals) > 1) {
+        filt.p <- c(filt.p, t.test(vals.of.interest, other.vals,
+                                           alternative = "greater")$p.value) 
+      } else {
+       filt.p <- c(filt.p, NA) 
+      }
+    }
+    # DIA.tab <- overall.tab[overall.tab$method == "DIA",]
+    # p.DIA <- t.test(DIA.tab[DIA.tab$cellType == cellType[i],], 
+    #                     DIA.tab[DIA.tab$cellType != cellType[i],],
+    #                 alternative = "greater")$p.value
+    # 
+    # TMT.tab <- overall.tab[overall.tab$method == "TMT",]
+    # p.TMT <- t.test(TMT.tab[TMT.tab$cellType == cellType[i],], 
+    #                     TMT.tab[TMT.tab$cellType != cellType[i],],
+    #                 alternative = "greater")$p.value
+    # 
+    # vg.tab <- overall.tab[overall.tab$signature == "single-cell transcriptomics",]
+    # p.vg <- t.test(vg.tab[vg.tab$cellType == cellType[i],], 
+    #                 vg.tab[vg.tab$cellType != cellType[i],],
+    #                alternative = "greater")$p.value
+    # 
+    # sorted.tab <- overall.tab[overall.tab$signature == "sorted proteomics",]
+    # p.sorted <- t.test(sorted.tab[sorted.tab$cellType == cellType[i],], 
+    #                    sorted.tab[sorted.tab$cellType != cellType[i],],
+    #                    alternative = "greater")$p.value
+    # p.tab[p.tab$cellType == cellType[i],p.types] <- c(p.overall, p.DIA, p.TMT, p.vg, p.sorted)
+    p.tab[p.tab$cellType == cellType[i],p.types] <- c(p.overall, filt.p)
   }
   write.table(p.tab,'pValues_knownCellType.tsv',row.names=F,col.names=T)
   
@@ -245,7 +269,7 @@ combineCellTypeVals<-function(file.list){
   agg.tab1$percent_correct <- 100*agg.tab1$N_correct/agg.tab1$N_total
   
   perc.agg1 <- ggplot2::ggplot(agg.tab1, aes(x=signature, y=percent_correct))+
-    geom_bar()+scale_fill_manual(values=pal)+
+    geom_bar(stat='identity')+scale_fill_manual(values=pal)+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave('cellTypeAccuracy_by_signature.pdf',perc.agg1,width=10)
   
@@ -256,7 +280,7 @@ combineCellTypeVals<-function(file.list){
   agg.tab2$percent_correct <- 100*agg.tab2$N_correct/agg.tab2$N_total
   
   perc.agg2 <- ggplot2::ggplot(agg.tab2, aes(x=signature, y=percent_correct))+
-    geom_bar()+scale_fill_manual(values=pal)+
+    geom_bar(stat='identity')+scale_fill_manual(values=pal)+
     facet_grid(rows=vars(method))+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave('cellTypeAccuracy_by_signature-method.pdf',perc.agg2,width=10)
@@ -268,7 +292,7 @@ combineCellTypeVals<-function(file.list){
   agg.tab3$percent_correct <- 100*agg.tab3$N_correct/agg.tab3$N_total
   
   perc.agg3 <- ggplot2::ggplot(agg.tab3, aes(x=signature, y=percent_correct))+
-    geom_bar()+scale_fill_manual(values=pal)+
+    geom_bar(stat='identity')+scale_fill_manual(values=pal)+
     facet_grid(rows=vars(method),cols=vars(knownCellType))+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave('cellTypeAccuracy_by_signature-method-knownCellType.pdf',perc.agg3,width=10)
