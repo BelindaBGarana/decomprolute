@@ -1,8 +1,8 @@
 #!/usr/bin/env cwltool
 
 class: CommandLineTool
-label: plot-figs
-id: plot-figs
+label: plot-figs-sigs-vals
+id: plot-figs-sigs-vals
 cwlVersion: v1.2
 baseCommand: Rscript
 
@@ -25,7 +25,9 @@ inputs:
      inputBinding:
        position: 2
    files:
-     type: File[]
+     type:
+       type: array
+       items: File
      inputBinding:
         position: 4
    repNumber:
