@@ -48,5 +48,5 @@ outputs:
        type: array
        items: File
      outputBinding:
-        glob: ["*.pdf","*.html"]
+        glob: ["*.pdf","*.rds"]
     
