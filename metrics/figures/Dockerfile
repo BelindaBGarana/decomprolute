@@ -19,8 +19,8 @@ RUN Rscript -e 'install.packages("viridis",dependencies=TRUE)'
 RUN Rscript -e 'install.packages("reshape2",dependencies=TRUE)'
 RUN Rscript -e 'install.packages("htmlwidgets",dependencies=TRUE)'
 #RUN Rscript -e 'install.packages("webshot",dependencies=TRUE); webshot::install_phantomjs()'
-RUN Rscript -e 'install.packages("plotly",dependencies=TRUE)'
-RUN Rscript -e 'install.packages("pandoc",dependencies=TRUE)'
+#RUN Rscript -e 'install.packages("plotly",dependencies=TRUE)'
+#RUN Rscript -e 'install.packages("pandoc",dependencies=TRUE)'
 
 
 

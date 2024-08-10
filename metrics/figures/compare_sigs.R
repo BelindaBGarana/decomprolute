@@ -16,8 +16,9 @@ library(argparser)
 library(ggplot2)
 library(nationalparkcolors)
 library(reshape2)
-library(plotly)
-library(htmlwidgets)
+#library(plotly)
+#library(pandoc)
+#library(htmlwidgets)
 #library(webshot)
 #webshot::install_phantomjs()
 # pal<-c(park_palette('GeneralGrant'), park_palette('Redwoods'))
@@ -74,7 +75,10 @@ combineValFiles<-function(file.list,colnamevals=c('cellType')){
     
     # import data
     tab<-read.table(file,fill=TRUE,sep = '\t',check.names=FALSE)
+    print(head(tab))
+    colnames(tab) <- tab[1,]
     colnames(tab)[1]<-colnamevals[1]
+    tab <- tab[-1,]
     
     # convert data from wide to long format
     tab <- reshape2::melt(tab, id.vars=colnamevals[1], variable.name="sample",
@@ -100,7 +104,7 @@ combineCellTypeVals<-function(file.list){
   print(head(full.tab))
   
   # plot data
-  fc<-ggplot(full.tab,aes(x=cellType,y=wv,fill=knownCellType))+geom_bar(stat='identity')+scale_fill_manual(values=pal)+
+  fc<-ggplot(full.tab,aes(x=cellType,y=wv,fill=knownCellType))+geom_boxplot()+scale_fill_manual(values=pal)+
     facet_grid(rows=vars(signature),cols=vars(method))+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave(paste0('cellTypeValueAllSamples.pdf'),fc,width=10)
@@ -112,26 +116,49 @@ combineCellTypeVals<-function(file.list){
   p.types <- c("overall","DIA","TMT","van_Galen","sorted")
   p.tab[,p.types] <- NA
   for (i in 1:length(knownCellTypes)) {
-    overall.tab <- full.tab[full.tab$knownCellType == knownCellTypes[i],]
-    p.overall <- t.test(overall.tab[overall.tab$cellType == cellType[i],], 
-                        overall.tab[overall.tab$cellType != cellType[i],],
-                        alternative = "greater")$p.value
-    
     filt.p <- c()
+    vals.of.interest <- na.omit(full.tab[full.tab$cellType == cellType[i],]$wv)
+    other.vals <- na.omit(full.tab[full.tab$cellType != cellType[i],]$wv)
+    message("There are ",
+            length(vals.of.interest), " values for ", knownCellTypes[i],
+            " and ", length(other.vals), " values for other cell types")
+    message("The values for ", knownCellTypes[i], " are: ",
+            paste0(vals.of.interest, sep=" "))
+    message("The values for other cell types are: ",
+            paste0(other.vals, sep=" "))
+    if (length(vals.of.interest) > 0 & length(other.vals) > 0) {
+      temp.test <- try(t.test(vals.of.interest, other.vals,
+                           alternative = "greater"), silent = TRUE)
+      if(is(temp.test, "try-error")) {
+        temp.p <- NA
+      } else {
+        temp.p <- temp.test$p.value
+      }
+      filt.p <- c(filt.p, temp.p) 
+    } else {
+      filt.p <- c(filt.p, NA) 
+    }
+    
     filter.val <- c("DIA", "TMT", "single-cell transcriptomics",
                     "sorted proteomics")
     filter.var <- c("method", "method", "signature", "signature")
     for (j in 1:length(filter.val)) {
-      filt.tab <- overall.tab[overall.tab[,filter.var[j]] == filter.val[j],]
-      vals.of.interest <- filt.tab[filt.tab$cellType == cellType[i],]
-      other.vals <- filt.tab[filt.tab$cellType != cellType[i],]
+      filt.tab <- full.tab[full.tab[,filter.var[j]] == filter.val[j],]
+      vals.of.interest <- na.omit(filt.tab[filt.tab$cellType == cellType[i],]$wv)
+      other.vals <- na.omit(filt.tab[filt.tab$cellType != cellType[i],]$wv)
       
       message("For filter ", filter.var[j], " == ", filter.val[j], " there are ",
               length(vals.of.interest), " values for ", knownCellTypes[i],
               " and ", length(other.vals), " values for other cell types")
-      if (length(vals.of.interest) > 1 & length(other.vals) > 1) {
-        filt.p <- c(filt.p, t.test(vals.of.interest, other.vals,
-                                           alternative = "greater")$p.value) 
+      if (length(vals.of.interest) > 0 & length(other.vals) > 0) {
+        temp.test <- try(t.test(vals.of.interest, other.vals,
+                                alternative = "greater"), silent = TRUE)
+        if(is(temp.test, "try-error")) {
+          temp.p <- NA
+        } else {
+          temp.p <- temp.test$p.value
+        }
+        filt.p <- c(filt.p, temp.p)  
       } else {
        filt.p <- c(filt.p, NA) 
       }
@@ -156,7 +183,7 @@ combineCellTypeVals<-function(file.list){
     #                    sorted.tab[sorted.tab$cellType != cellType[i],],
     #                    alternative = "greater")$p.value
     # p.tab[p.tab$cellType == cellType[i],p.types] <- c(p.overall, p.DIA, p.TMT, p.vg, p.sorted)
-    p.tab[p.tab$cellType == cellType[i],p.types] <- c(p.overall, filt.p)
+    p.tab[p.tab$cellType == cellType[i],p.types] <- filt.p
   }
   write.table(p.tab,'pValues_knownCellType.tsv',row.names=F,col.names=T)
   
@@ -174,93 +201,110 @@ combineCellTypeVals<-function(file.list){
         sig.tab <- sample.tab[sample.tab$signature == k,]
         
         # identify prediction
-        prediction <- sig.tab[sig.tab$wv == max(sig.tab$wv),]$cellType
-        full.tab[full.tab$method == i & 
-                   full.tab$sample == j & 
-                   full.tab$signature == k,]$predictedCellType <- prediction
+        prediction <- unique(sig.tab[sig.tab$wv == max(sig.tab$wv),]$cellType)
         
-        # determine if it was accurate
-        acc <- which(knownCellTypes == prediction) == which(cellType == prediction) # assuming order of cell types match
-        full.tab[full.tab$method == i & 
+        if (length(prediction) > 1) {
+          message("prediction was ", paste0(prediction, sep=" "))
+          full.tab[full.tab$method == i & 
                      full.tab$sample == j & 
-                     full.tab$signature == k,]$correctPrediction <- acc
+                     full.tab$signature == k,]$predictedCellType <- paste0(prediction, sep=", ")
+        } else if (prediction %in% cellType) {
+          full.tab[full.tab$method == i & 
+                     full.tab$sample == j & 
+                     full.tab$signature == k,]$predictedCellType <- prediction
+          
+          # determine if it was accurate
+          #acc <- which(knownCellTypes == prediction) == which(cellType == prediction) # assuming order of cell types match
+          acc <- grepl(prediction, full.tab[full.tab$method == i & 
+                                              full.tab$sample == j & 
+                                              full.tab$signature == k,]$knownCellType)
+          full.tab[full.tab$method == i & 
+                     full.tab$sample == j & 
+                     full.tab$signature == k,]$correctPrediction <- acc 
+        }
       }
     }
   }
   write.table(p.tab,'accuracy_knownCellType.tsv',row.names=F,col.names=T)
   
   # create ternary plot (corners are Monocyte, Progenitor, MSC)
-  tern.df <- reshape2::dcast(full.tab, sample + method + knownCellType + signature ~ cellType, value.var="wv")
-  axis <- function(title) {
-    list(
-      title = title,
-      titlefont = list(
-        size = 20
-      ),
-      tickfont = list(
-        size = 15
-      ),
-      tickcolor = 'rgba(0,0,0,0)',
-      ticklen = 5
-    )
-  }
-  
-  tern.fig <- tern.df %>% plot_ly() %>% add_trace(
-    type = 'scatterternary', mode = 'markers',
-    a = ~Monocytle-like,
-    b = ~Progenitor-like,
-    c = ~MSC-like,
-    marker = list(
-      #colorscale = pal,
-      color = ~knownCellType,
-      shape = ~signature,
-      symbol = 100,
-      size = 14,
-      line = list('width' = 2),
-      showscale = TRUE
-    )
-  ) %>% layout(
-    title = "",
-    ternary = list(
-      sum = 100,
-      aaxis = axis('Monocyte-like'),
-      baxis = axis('Progenitor-like'),
-      caxis = axis('MSC-like')
-    )
-  )
-  temp.fname <- "cellTypeTernary"
-  saveWidget(tern.fig, paste0(temp.fname,".html"))
-  #webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf"))
-  
-  for (i in methods) {
-    filtered.df <- tern.df[tern.df$method==i,]
-    tern.fig <- filtered.df %>% plot_ly() %>% add_trace(
-        type = 'scatterternary', mode = 'markers',
-        a = ~Monocytle-like,
-        b = ~Progenitor-like,
-        c = ~MSC-like,
-        marker = list(
-          #colorscale = pal,
-          color = ~knownCellType,
-          shape = ~method,
-          symbol = 100,
-          size = 14,
-          line = list('width' = 2),
-          showscale = TRUE
-        )
-      ) %>% layout(
-        title = i,
-        ternary = list(
-          sum = 100,
-          aaxis = axis('Monocyte-like'),
-          baxis = axis('Progenitor-like'),
-          caxis = axis('MSC-like')
-        )
+  tern.df <- na.omit(reshape2::dcast(full.tab, sample + method + knownCellType + signature ~ cellType, value.var="wv"))
+  if (nrow(tern.df) > 0) {
+    axis <- function(title) {
+      list(
+        title = title,
+        titlefont = list(
+          size = 20
+        ),
+        tickfont = list(
+          size = 15
+        ),
+        tickcolor = 'rgba(0,0,0,0)',
+        ticklen = 5
       )
-    temp.fname <- paste0("cellTypeTernary_",i)
-    saveWidget(tern.fig, paste0(temp.fname,".html"))
-    #webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf")) 
-  }
+    }
+    
+    tern.fig <- tern.df %>% plot_ly() %>% add_trace(
+      type = 'scatterternary', mode = 'markers',
+      a = ~`Monocyte-like`,
+      b = ~`Progenitor-like`,
+      c = ~`MSC-like`,
+      marker = list(
+        #colorscale = pal,
+        color = ~knownCellType,
+        shape = ~signature,
+        symbol = 100,
+        size = 14,
+        line = list('width' = 2),
+        showscale = TRUE
+      )
+    ) %>% layout(
+      title = "",
+      ternary = list(
+        sum = 100,
+        aaxis = axis('Monocyte-like'),
+        baxis = axis('Progenitor-like'),
+        caxis = axis('MSC-like')
+      )
+    )
+    temp.fname <- "cellTypeTernary"
+    saveRDS(tern.fig, paste0(temp.fname, ".rds"))
+    #saveWidget(tern.fig, paste0(temp.fname,".html"))
+    #webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf"))
+    
+    for (i in methods) {
+      filtered.df <- na.omit(tern.df[tern.df$method==i,])
+      if (nrow(filtered.df) > 0) {
+        tern.fig <- filtered.df %>% plot_ly() %>% add_trace(
+          type = 'scatterternary', mode = 'markers',
+          a = ~`Monocyte-like`,
+          b = ~`Progenitor-like`,
+          c = ~`MSC-like`,
+          marker = list(
+            #colorscale = pal,
+            color = ~knownCellType,
+            shape = ~method,
+            symbol = 100,
+            size = 14,
+            line = list('width' = 2),
+            showscale = TRUE
+          )
+        ) %>% layout(
+          title = i,
+          ternary = list(
+            sum = 100,
+            aaxis = axis('Monocyte-like'),
+            baxis = axis('Progenitor-like'),
+            caxis = axis('MSC-like')
+          )
+        )
+        temp.fname <- paste0("cellTypeTernary_",i)
+        saveRDS(tern.fig, paste0(temp.fname, ".rds"))
+        #saveWidget(tern.fig, paste0(temp.fname,".html"))
+        #webshot(paste0(temp.fname,".html"), paste0(temp.fname,".pdf"))  
+      }
+    }
+  } 
   
   # count % of samples correctly guessed for each signature
   agg.tab1 <- plyr::ddply(full.tab, .(signature), summarize,
@@ -342,7 +386,7 @@ combineCellTypeCors<-function(file.list,metric='correlation'){
     dplyr::rename(value=metric)
   print(head(full.tab))
 
-  fc<-ggplot(full.tab,aes(x=cellType,y=value,fill=disease))+geom_boxplot()+scale_fill_manual(values=pal)+
+  fc<-ggplot(full.tab,aes(x=cellType,y=value,fill=disease))+geom_bar(stat='identity')+scale_fill_manual(values=pal)+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   
   ggsave(paste0('cellType',metric,'AllSamples.pdf'),fc,width=10)
