@@ -1,5 +1,5 @@
 # combine sorted AML proteomics signatures for deconvolution purposes
-library(synapser); library(plyr); library(dplyr); library(reshape2)
+library(synapser); library(dplyr); library(reshape2)
 setwd("~/OneDrive - PNNL/Documents/GitHub/decomprolute/signature_matrices")
 
 #### 1. Load signatures ####
@@ -97,43 +97,66 @@ name.map <- list("Feature" = "NAME",
 data.types <- list("global" = "Gene",
                    "phospho" = "SUB_SITE")
 for (i in drug.filters) {
+  message("drug filter ", i)
   ### extract sigs for each cell type vs. all others
-  if (drug.filters == "") {
-    no.filter <- sig
-    temp.fname <- paste(names(data.types)[j], "sortedAML.txt", sep = "_")
+  if (i == "") {
+    no.filter <- sig[is.na(sig$Filter),]
+    temp.fname <- "sortedAML.txt"
   } else {
     no.filter <- sig[sig$Filter == i,] 
-    temp.fname <- paste(names(data.types)[j], i, "sortedAML.txt", sep = "_")
+    temp.fname <- paste(i, "sortedAML.txt", sep = "_")
   }
   
   ## for each data type
   for (j in 1:length(data.types)) {
-    global <- no.filter[no.filter$Feature_type == data.types[[j]],]
-    global.DIA <- dplyr::distinct(global[global$method == "DIA",])
-    global.TMT <- dplyr::distinct(global[global$method == "TMT",])
+    message("data type ", names(data.types)[j])
+    global <- na.omit(no.filter[no.filter$Feature_type == data.types[[j]] & 
+                                  no.filter$Contrast %in% names(name.map)[2:4],])
+    global.DIA <- na.omit(dplyr::distinct(global[global$method == "DIA",]))
+    global.TMT <- na.omit(dplyr::distinct(global[global$method == "TMT",]))
     
     for (k in 1:length(n.genes)) {
       if (nrow(global.DIA) > 0) {
-        global.DIA <- global.DIA %>% slice_max(order_by = abs(Log2FC), n = n.genes[k])
-        global.DIA <- reshape2::dcast(global.DIA, Feature ~ Contrast, value.var = "Log2FC")
+        temp.sigs.DIA <- list()
+        for (m in 2:length(name.map)) {
+          temp.global.DIA <- global.DIA[global.DIA$Contrast == names(name.map)[m],] 
+          if (nrow(temp.global.DIA) > 0) {
+            temp.sigs.DIA[[names(name.map)[m]]] <- temp.global.DIA %>% 
+              slice_max(order_by = abs(Log2FC), n = n.genes[k])
+          }
+          temp.global.DIA.sig <- data.table::rbindlist(temp.sigs.DIA, use.names = FALSE)
+        }
+        temp.global.DIA <- reshape2::dcast(temp.global.DIA.sig, Feature ~ Contrast, value.var = "Log2FC")
+        message("compiled DIA sigs")
       }
       if (nrow(global.TMT) > 0) {
-        global.TMT <- global.TMT %>% slice_max(order_by = abs(Log2FC), n = n.genes[k])
-        global.TMT <- reshape2::dcast(global.TMT, Feature ~ Contrast, value.var = "Log2FC")
+        temp.sigs.TMT <- list()
+        for (m in 2:length(name.map)) {
+          temp.global.TMT <- global.TMT[global.TMT$Contrast == names(name.map)[m],] 
+          if (nrow(temp.global.TMT) > 0) {
+            temp.sigs.TMT[[names(name.map)[m]]] <- temp.global.TMT %>% 
+              slice_max(order_by = abs(Log2FC), n = n.genes[k])
+          }
+          temp.global.TMT.sig <- data.table::rbindlist(temp.sigs.TMT, use.names = FALSE)
+        }
+        temp.global.TMT <- reshape2::dcast(temp.global.TMT.sig, Feature ~ Contrast, value.var = "Log2FC")
+        message("compiled TMT sigs")
       }
       
       # for now, merge DIA & TMT sigs because CD14 & CD34 are only in TMT and MSC are only in DIA
       if (nrow(global.DIA) > 0 & nrow(global.TMT) > 0) {
-        global <- merge(global.TMT, global.DIA, all=TRUE)
+        temp.global <- merge(temp.global.TMT, temp.global.DIA, all=TRUE)
       } else if (nrow(global.DIA) > 0) {
-        global <- global.DIA
+        temp.global <- temp.global.DIA
       } else {
-        global <- global.TMT
+        temp.global <- temp.global.TMT
       }
       
       # fix colnames
-      colnames(global) <- unlist(name.map[colnames(global)])
-      write.table(global, paste0("top_25_", temp.fname), sep="\t", row.names = FALSE) 
+      colnames(temp.global) <- unlist(name.map[colnames(temp.global)])
+      write.table(temp.global, paste0("top_", n.genes[k], "_", 
+                                      names(data.types)[j], "_", temp.fname), 
+                  sep="\t", row.names = FALSE) 
     }
   }
 }
