@@ -1,5 +1,5 @@
 # combine sorted AML proteomics signatures for deconvolution purposes
-library(synapser); library(dplyr); library(reshape2)
+library(synapser); library(plyr); library(dplyr); library(reshape2)
 setwd("~/OneDrive - PNNL/Documents/GitHub/decomprolute/signature_matrices")
 
 #### 1. Load signatures ####
@@ -44,10 +44,10 @@ drug.filters <- c()
 for (i in drugs) {
   drug.filters <- unique(c(drug.filters, filters[grepl(i, filters)])) 
 }
-name.map <- list("NAME" = "Feature", 
-                "Monocyte" = "CD14_Pos_vs_Neg", 
-                 "Progenitor" = "CD34_Pos_vs_Neg",
-                "MSC" = "MSC_MSC_vs_Non_MSC")
+# name.map <- list("NAME" = "Feature", 
+#                 "Monocyte" = "CD14_Pos_vs_Neg", 
+#                  "Progenitor" = "CD34_Pos_vs_Neg",
+#                 "MSC" = "MSC_MSC_vs_Non_MSC")
 name.map <- list("Feature" = "NAME", 
                  "CD14_Pos_vs_Neg" = "Monocyte", 
                  "CD34_Pos_vs_Neg" = "Progenitor",
@@ -78,5 +78,62 @@ for (i in drug.filters) {
     # fix colnames
     colnames(global) <- unlist(name.map[colnames(phospho.TMT)])
     write.table(global, paste(names(data.types)[j], i, "sortedAML.txt", sep = "_"), sep="\t", row.names = FALSE)
+  }
+}
+
+#### 4. Select top gene symbols ####
+n.genes <- c(1, 5, 10, 25, 50, 100)
+filters <- na.omit(unique(sig$Filter))
+drugs <- c("Aza", "Ven")
+drug.filters <- c()
+for (i in drugs) {
+  drug.filters <- unique(c(drug.filters, filters[grepl(i, filters)])) 
+}
+drug.filters <- c(drug.filters, "")
+name.map <- list("Feature" = "NAME", 
+                 "CD14_Pos_vs_Neg" = "Monocyte", 
+                 "CD34_Pos_vs_Neg" = "Progenitor",
+                 "MSC_MSC_vs_Non_MSC" = "MSC")
+data.types <- list("global" = "Gene",
+                   "phospho" = "SUB_SITE")
+for (i in drug.filters) {
+  ### extract sigs for each cell type vs. all others
+  if (drug.filters == "") {
+    no.filter <- sig
+    temp.fname <- paste(names(data.types)[j], "sortedAML.txt", sep = "_")
+  } else {
+    no.filter <- sig[sig$Filter == i,] 
+    temp.fname <- paste(names(data.types)[j], i, "sortedAML.txt", sep = "_")
+  }
+  
+  ## for each data type
+  for (j in 1:length(data.types)) {
+    global <- no.filter[no.filter$Feature_type == data.types[[j]],]
+    global.DIA <- dplyr::distinct(global[global$method == "DIA",])
+    global.TMT <- dplyr::distinct(global[global$method == "TMT",])
+    
+    for (k in 1:length(n.genes)) {
+      if (nrow(global.DIA) > 0) {
+        global.DIA <- global.DIA %>% slice_max(order_by = abs(Log2FC), n = n.genes[k])
+        global.DIA <- reshape2::dcast(global.DIA, Feature ~ Contrast, value.var = "Log2FC")
+      }
+      if (nrow(global.TMT) > 0) {
+        global.TMT <- global.TMT %>% slice_max(order_by = abs(Log2FC), n = n.genes[k])
+        global.TMT <- reshape2::dcast(global.TMT, Feature ~ Contrast, value.var = "Log2FC")
+      }
+      
+      # for now, merge DIA & TMT sigs because CD14 & CD34 are only in TMT and MSC are only in DIA
+      if (nrow(global.DIA) > 0 & nrow(global.TMT) > 0) {
+        global <- merge(global.TMT, global.DIA, all=TRUE)
+      } else if (nrow(global.DIA) > 0) {
+        global <- global.DIA
+      } else {
+        global <- global.TMT
+      }
+      
+      # fix colnames
+      colnames(global) <- unlist(name.map[colnames(global)])
+      write.table(global, paste0("top_25_", temp.fname), sep="\t", row.names = FALSE) 
+    }
   }
 }

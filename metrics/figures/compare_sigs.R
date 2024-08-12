@@ -92,7 +92,7 @@ combineValFiles<-function(file.list,colnamevals=c('cellType')){
     
     return(data.frame(tab,tissue,disease,signature))
   }))
-  full.tab[full.tab$signature == "AML_sorted_100.tsv",]$signature <- "sorted proteomics"
+  full.tab[grepl("AML_sorted_100.tsv", full.tab$signature),]$signature <- "sorted proteomics"
   full.tab[full.tab$signature == "AML_vanGalen_100.tsv",]$signature <- "single-cell transcriptomics" # van Galen et al, 2019
   return(full.tab)
 }
