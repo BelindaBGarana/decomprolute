@@ -16,7 +16,7 @@ library(argparser)
 library(ggplot2)
 library(nationalparkcolors)
 library(reshape2)
-#library(plotly)
+library(plotly)
 #library(pandoc)
 #library(htmlwidgets)
 #library(webshot)
@@ -104,46 +104,29 @@ combineCellTypeVals<-function(file.list){
   print(head(full.tab))
   
   # plot data
-  fc<-ggplot(full.tab,aes(x=cellType,y=wv,fill=knownCellType))+geom_boxplot()+scale_fill_manual(values=pal)+
+  fc<-ggplot(full.tab,aes(x=cellType,y=wv,fill=knownCellType))+
+    geom_boxplot()+scale_fill_manual(values=pal)+
     facet_grid(rows=vars(signature),cols=vars(method))+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave(paste0('cellTypeValueAllSamples.pdf'),fc,width=10)
   
   # calculate p-values (e.g., if monocyte score is higher than others for known monocytes)
-  cellType <- sort(unique(full.tab$cellType))
-  knownCellTypes <- sort(unique(full.tab$knownCellType))
+  #cellType <- sort(unique(full.tab$cellType))
+  #knownCellTypes <- sort(unique(full.tab$knownCellType))
+  cellType <- c("Monocyte-like", "Progenitor-like", "MSC-like")
+  knownCellTypes <- c("Monocyte", "Progenitor", "MSC")
   p.tab <- data.frame(cellType)
-  p.types <- c("overall","DIA","TMT","van_Galen","sorted")
-  p.tab[,p.types] <- NA
+  filter.val <- c("overall", "DIA", "TMT", "single-cell transcriptomics",
+                  "sorted proteomics")
+  filter.var <- c(NA, "method", "method", "signature", "signature")
+  p.tab[,filter.val] <- NA
   for (i in 1:length(knownCellTypes)) {
-    filt.p <- c()
-    vals.of.interest <- na.omit(full.tab[full.tab$cellType == cellType[i],]$wv)
-    other.vals <- na.omit(full.tab[full.tab$cellType != cellType[i],]$wv)
-    message("There are ",
-            length(vals.of.interest), " values for ", knownCellTypes[i],
-            " and ", length(other.vals), " values for other cell types")
-    message("The values for ", knownCellTypes[i], " are: ",
-            paste0(vals.of.interest, sep=" "))
-    message("The values for other cell types are: ",
-            paste0(other.vals, sep=" "))
-    if (length(vals.of.interest) > 0 & length(other.vals) > 0) {
-      temp.test <- try(t.test(vals.of.interest, other.vals,
-                           alternative = "greater"), silent = TRUE)
-      if(is(temp.test, "try-error")) {
-        temp.p <- NA
-      } else {
-        temp.p <- temp.test$p.value
-      }
-      filt.p <- c(filt.p, temp.p) 
-    } else {
-      filt.p <- c(filt.p, NA) 
-    }
-    
-    filter.val <- c("DIA", "TMT", "single-cell transcriptomics",
-                    "sorted proteomics")
-    filter.var <- c("method", "method", "signature", "signature")
     for (j in 1:length(filter.val)) {
-      filt.tab <- full.tab[full.tab[,filter.var[j]] == filter.val[j],]
+      if (filter.val[j] == "overall") {
+        filt.tab <- full.tab
+      } else {
+        filt.tab <- full.tab[full.tab[,filter.var[j]] == filter.val[j],] 
+      }
       vals.of.interest <- na.omit(filt.tab[filt.tab$cellType == cellType[i],]$wv)
       other.vals <- na.omit(filt.tab[filt.tab$cellType != cellType[i],]$wv)
       
@@ -154,36 +137,12 @@ combineCellTypeVals<-function(file.list){
         temp.test <- try(t.test(vals.of.interest, other.vals,
                                 alternative = "greater"), silent = TRUE)
         if(is(temp.test, "try-error")) {
-          temp.p <- NA
+          message("t-test failed")
         } else {
-          temp.p <- temp.test$p.value
+          p.tab[p.tab$cellType == cellType[i],filter.val[j]] <- temp.test$p.value
         }
-        filt.p <- c(filt.p, temp.p)  
-      } else {
-       filt.p <- c(filt.p, NA) 
       }
     }
-    # DIA.tab <- overall.tab[overall.tab$method == "DIA",]
-    # p.DIA <- t.test(DIA.tab[DIA.tab$cellType == cellType[i],], 
-    #                     DIA.tab[DIA.tab$cellType != cellType[i],],
-    #                 alternative = "greater")$p.value
-    # 
-    # TMT.tab <- overall.tab[overall.tab$method == "TMT",]
-    # p.TMT <- t.test(TMT.tab[TMT.tab$cellType == cellType[i],], 
-    #                     TMT.tab[TMT.tab$cellType != cellType[i],],
-    #                 alternative = "greater")$p.value
-    # 
-    # vg.tab <- overall.tab[overall.tab$signature == "single-cell transcriptomics",]
-    # p.vg <- t.test(vg.tab[vg.tab$cellType == cellType[i],], 
-    #                 vg.tab[vg.tab$cellType != cellType[i],],
-    #                alternative = "greater")$p.value
-    # 
-    # sorted.tab <- overall.tab[overall.tab$signature == "sorted proteomics",]
-    # p.sorted <- t.test(sorted.tab[sorted.tab$cellType == cellType[i],], 
-    #                    sorted.tab[sorted.tab$cellType != cellType[i],],
-    #                    alternative = "greater")$p.value
-    # p.tab[p.tab$cellType == cellType[i],p.types] <- c(p.overall, p.DIA, p.TMT, p.vg, p.sorted)
-    p.tab[p.tab$cellType == cellType[i],p.types] <- filt.p
   }
   write.table(p.tab,'pValues_knownCellType.tsv',row.names=F,col.names=T)
   
@@ -214,18 +173,22 @@ combineCellTypeVals<-function(file.list){
                      full.tab$signature == k,]$predictedCellType <- prediction
           
           # determine if it was accurate
-          #acc <- which(knownCellTypes == prediction) == which(cellType == prediction) # assuming order of cell types match
-          acc <- grepl(prediction, full.tab[full.tab$method == i & 
-                                              full.tab$sample == j & 
-                                              full.tab$signature == k,]$knownCellType)
+          knownPrediction <- strsplit(prediction, "-")[[1]][1] # remove "-like" from end
+          knownCellType <- full.tab[full.tab$method == i & 
+                                      full.tab$sample == j & 
+                                      full.tab$signature == k,]$knownCellType
+          #acc <- which(knownCellTypes == knownPrediction) == which(cellType == prediction) # assuming order of cell types match
+          # acc <- grepl(prediction, full.tab[full.tab$method == i & 
+          #                                     full.tab$sample == j & 
+          #                                     full.tab$signature == k,]$knownCellType)
           full.tab[full.tab$method == i & 
                      full.tab$sample == j & 
-                     full.tab$signature == k,]$correctPrediction <- acc 
+                     full.tab$signature == k,]$correctPrediction <- knownPrediction == knownCellType 
         }
       }
     }
   }
-  write.table(p.tab,'accuracy_knownCellType.tsv',row.names=F,col.names=T)
+  #write.table(full.tab,'accuracy_knownCellType.tsv',row.names=F,col.names=T)
   
   # create ternary plot (corners are Monocyte, Progenitor, MSC)
   tern.df <- na.omit(reshape2::dcast(full.tab, sample + method + knownCellType + signature ~ cellType, value.var="wv"))
@@ -386,7 +349,8 @@ combineCellTypeCors<-function(file.list,metric='correlation'){
     dplyr::rename(value=metric)
   print(head(full.tab))
 
-  fc<-ggplot(full.tab,aes(x=cellType,y=value,fill=disease))+geom_bar(stat='identity')+scale_fill_manual(values=pal)+
+  fc<-ggplot(full.tab,aes(x=cellType,y=value,fill=disease))+
+    geom_bar(position='dodge',stat='identity')+scale_fill_manual(values=pal)+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   
   ggsave(paste0('cellType',metric,'AllSamples.pdf'),fc,width=10)
