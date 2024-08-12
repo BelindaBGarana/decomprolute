@@ -14,4 +14,5 @@ prot-algorithms:
 tissueTypes:
    - tumor
 signature1: AML_vanGalen
-signature2: AML_sorted
+#signature2: AML_sorted
+signature2: top_25_global_sortedAML
