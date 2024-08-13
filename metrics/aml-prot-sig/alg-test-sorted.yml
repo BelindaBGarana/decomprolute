@@ -15,4 +15,4 @@ tissueTypes:
    - tumor
 signature1: AML_vanGalen
 #signature2: AML_sorted
-signature2: top_100_global_sortedAML
+signature2: top_50_global_sortedAML
