@@ -92,7 +92,7 @@ combineValFiles<-function(file.list,colnamevals=c('cellType')){
     
     return(data.frame(tab,tissue,disease,signature))
   }))
-  full.tab[grepl("AML_sorted_100.tsv", full.tab$signature),]$signature <- "sorted proteomics"
+  full.tab[grepl("sortedAML_100.tsv", full.tab$signature),]$signature <- "sorted proteomics"
   full.tab[full.tab$signature == "AML_vanGalen_100.tsv",]$signature <- "single-cell transcriptomics" # van Galen et al, 2019
   return(full.tab)
 }
@@ -103,17 +103,11 @@ combineCellTypeVals<-function(file.list){
   full.tab<-combineValFiles(file.list,colnamevals=c('cellType'))
   print(head(full.tab))
   
-  # plot data
-  fc<-ggplot(full.tab,aes(x=cellType,y=wv,fill=knownCellType))+
-    geom_boxplot()+scale_fill_manual(values=pal)+
-    facet_grid(rows=vars(signature),cols=vars(method))+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-  ggsave(paste0('cellTypeValueAllSamples.pdf'),fc,width=10)
-  
   # calculate p-values (e.g., if monocyte score is higher than others for known monocytes)
   #cellType <- sort(unique(full.tab$cellType))
   #knownCellTypes <- sort(unique(full.tab$knownCellType))
-  cellType <- c("Monocyte-like", "Progenitor-like", "MSC-like")
+  #cellType <- c("Monocyte-like", "Progenitor-like", "MSC-like")
+  cellType <- c("Monocyte", "Progenitor", "MSC")
   knownCellTypes <- c("Monocyte", "Progenitor", "MSC")
   p.tab <- data.frame(cellType)
   filter.val <- c("overall", "DIA", "TMT", "single-cell transcriptomics",
@@ -173,7 +167,7 @@ combineCellTypeVals<-function(file.list){
                      full.tab$signature == k,]$predictedCellType <- prediction
           
           # determine if it was accurate
-          knownPrediction <- strsplit(prediction, "-")[[1]][1] # remove "-like" from end
+          #knownPrediction <- strsplit(prediction, "-")[[1]][1] # remove "-like" from end
           knownCellType <- full.tab[full.tab$method == i & 
                                       full.tab$sample == j & 
                                       full.tab$signature == k,]$knownCellType
@@ -181,9 +175,12 @@ combineCellTypeVals<-function(file.list){
           # acc <- grepl(prediction, full.tab[full.tab$method == i & 
           #                                     full.tab$sample == j & 
           #                                     full.tab$signature == k,]$knownCellType)
+          # full.tab[full.tab$method == i & 
+          #            full.tab$sample == j & 
+          #            full.tab$signature == k,]$correctPrediction <- knownPrediction == knownCellType 
           full.tab[full.tab$method == i & 
                      full.tab$sample == j & 
-                     full.tab$signature == k,]$correctPrediction <- knownPrediction == knownCellType 
+                     full.tab$signature == k,]$correctPrediction <- prediction == knownCellType
         }
       }
     }
@@ -191,7 +188,7 @@ combineCellTypeVals<-function(file.list){
   #write.table(full.tab,'accuracy_knownCellType.tsv',row.names=F,col.names=T)
   
   # create ternary plot (corners are Monocyte, Progenitor, MSC)
-  tern.df <- na.omit(reshape2::dcast(full.tab, sample + method + knownCellType + signature ~ cellType, value.var="wv"))
+  tern.df <- reshape2::dcast(full.tab, sample + method + knownCellType + signature ~ cellType, value.var="wv")
   if (nrow(tern.df) > 0) {
     axis <- function(title) {
       list(
@@ -269,6 +266,13 @@ combineCellTypeVals<-function(file.list){
     }
   } 
   
+  # plot data
+  fc<-ggplot(full.tab,aes(x=cellType,y=wv,fill=knownCellType))+
+    geom_boxplot()+scale_fill_manual(values=pal)+
+    facet_grid(rows=vars(signature),cols=vars(method))+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  ggsave(paste0('cellTypeValueAllSamples.pdf'),fc,width=10)
+  
   # count % of samples correctly guessed for each signature
   agg.tab1 <- plyr::ddply(full.tab, .(signature), summarize,
                          N_correct = sum(correctPrediction, na.rm = TRUE),
@@ -300,9 +304,19 @@ combineCellTypeVals<-function(file.list){
   
   perc.agg3 <- ggplot2::ggplot(agg.tab3, aes(x=signature, y=percent_correct))+
     geom_bar(stat='identity')+scale_fill_manual(values=pal)+
+    geom_text(aes(label = paste("N =", N_total)), vjust = 1.5, colour = "white") +
     facet_grid(rows=vars(method),cols=vars(knownCellType))+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
   ggsave('cellTypeAccuracy_by_signature-method-knownCellType.pdf',perc.agg3,width=10)
+  
+  sub.tern <- tern.df[,unique(full.tab$cellType)]
+  print(head(sub.tern))
+  tern.df[,unique(full.tab$cellType)] <- t(scale(t(as.matrix(sub.tern))))
+  fc<-ggplot(tern.df,aes(x=cellType,y=wv,fill=knownCellType))+
+    geom_boxplot()+scale_fill_manual(values=pal)+
+    facet_grid(rows=vars(signature),cols=vars(method))+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  ggsave(paste0('cellTypeValueAllSamples_scaled.pdf'),fc,width=10)
   
   return(full.tab)
 }
