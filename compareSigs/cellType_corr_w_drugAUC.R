@@ -82,12 +82,14 @@ global100 <- global.BeatAML[,colSums(is.na(global.BeatAML)) == 0]
 
 global100.wv <- DMEA::WV(global100, global.sig.25[,c("Gene", "Log2FC")]) # CPM was unused gene
 write.csv(global100.wv$scores, "WV_BeatAML_top25DIAGlobal_by_absLog2FC.csv", row.names = FALSE)
+global100.wv <- read.csv("WV_BeatAML_top25DIAGlobal_by_absLog2FC.csv")
 
 # correlation between rna deconv of bulk samples and WV scores of sorted samples
 all.scores <- merge(global100.wv$scores, camilo, by = "sample")
 cor.bulk.sorted.scores <- DMEA::rank_corr(all.scores)
 write.csv(cor.bulk.sorted.scores$result, "BeatAML_xcell_deconvolution_correlation_with_WV_sorted_CD14vsCD34_top_25_absLog2FC_DIA.csv", row.names = FALSE)
 ggsave("BeatAML_xcell_deconvolution_correlation_with_WV_sorted_CD14vsCD34_top_25_absLog2FC_DIA_scatterPlots.pdf", cor.bulk.sorted.scores$scatter.plots)
+
 # strongest correlation is again monocyte: Pearson r = 0.8603639, p = 8.192483e-48, q = 1.146948e-46
 # does ratio of mono/prog in Beat AML better predict drug sensitivity than sorted cell CD14/CD34 signature? (similar) what about a combination of the two scores?
 # try mono score of xcell rna van galen + wv sorted prot cd14 vs cd34
@@ -156,9 +158,96 @@ rownames(sorted.AML) <- c("Monocyte", "Progenitor", "MSC") # remove -like from e
 mono.sorted <- t(sorted.AML[1,])
 # need to map V1, V2, etc. to sample IDs
 
+###
+# redo sig comparison with cd14 vs other sig
+cd14.sig <- read.csv(synapser::synGet("syn59424916")$path) # DIA
+cd14.sig.25 <- cd14.sig %>% slice_max(abs(Log2FC), n=25)
 
+# Beat AML WV
+global100.wv <- DMEA::WV(global100, cd14.sig.25[,c("Gene", "Log2FC")]) # CPM was unused gene
+write.csv(global100.wv$scores, "WV_BeatAML_top25DIAGlobalCD14_by_absLog2FC.csv", row.names = FALSE)
+global100.wv.cd14 <- read.csv("WV_BeatAML_top25DIAGlobalCD14_by_absLog2FC.csv")
 
+# correlation between rna deconv of bulk samples and WV scores of sorted samples
+all.scores <- merge(global100.wv$scores, camilo, by = "sample")
+cor.bulk.sorted.scores <- DMEA::rank_corr(all.scores)
+write.csv(cor.bulk.sorted.scores$result, "BeatAML_xcell_deconvolution_correlation_with_WV_sorted_CD14vsOther_top_25_absLog2FC_DIA.csv", row.names = FALSE)
+ggsave("BeatAML_xcell_deconvolution_correlation_with_WV_sorted_CD14vsOther_top_25_absLog2FC_DIA_scatterPlots.pdf", cor.bulk.sorted.scores$scatter.plots)
 
+# strongest correlation is again monocyte: Pearson r = 0.8603639, p = 8.192483e-48, q = 1.146948e-46
+# does ratio of mono/prog in Beat AML better predict drug sensitivity than sorted cell CD14/CD34 signature? (similar) what about a combination of the two scores?
+# try mono score of xcell rna van galen + wv sorted prot cd14 vs cd34
+all.scores$sum_monocyte_WV <- all.scores$WV + all.scores$Monocyte
+combo.score <- all.scores[,c("sample", "sum_monocyte_WV")]
+
+# for venetoclax or Aza+Ven, does drug AUC correlate with any cell type score?
+combo.drug.AUC <- merge(combo.score, drug.BeatAML.wide, by="sample")
+combo.corr <- DMEA::rank_corr(combo.drug.AUC) # Ven, Aza+Ven are correlated
+# Ven result is a bit worse Pearson r = 0.694086775, p = 3.011629e-17, q = 9.336048e-15 and rank 8 with N = 111
+# Aza - Ven is 2nd top correlated drug treatment but still a bit worse with Pearson r = 0.782821788, p = 4.498523e-05, q = 7.339695e-04, N = 20
+write.csv(combo.corr$result, "BeatAML_xcell_deconvolution_plus_sorted_WV_CD14vsOther_correlation_with_drug_AUC.csv", row.names = FALSE)
+ggsave("BeatAML_xcell_deconvolution_plus_sorted_WV_CD14vsOther_correlation_with_drug_AUC_scatterPlots.pdf", combo.corr$scatter.plots)
+
+# what about just CD14 vs. other
+combo.drug.AUC <- merge(global100.wv$scores, drug.BeatAML.wide, by="sample")
+combo.corr <- DMEA::rank_corr(combo.drug.AUC) # Ven, Aza+Ven are correlated
+# Ven result is a bit worse Pearson r = 0.694086775, p = 3.011629e-17, q = 9.336048e-15 and rank 8 with N = 111
+# Aza - Ven is 2nd top correlated drug treatment but still a bit worse with Pearson r = 0.782821788, p = 4.498523e-05, q = 7.339695e-04, N = 20
+write.csv(combo.corr$result, "BeatAML_sorted_WV_CD14vsOther_correlation_with_drug_AUC.csv", row.names = FALSE)
+ggsave("BeatAML_sorted_WV_CD14vsOther_correlation_with_drug_AUC_scatterPlots.pdf", combo.corr$scatter.plots)
+
+# is this better than GBT
+gbt.prot.ven.pearson <- c("0.972325815","0.55449849","-0.28147852",
+                          "-0.14253104","0.328844856","0.711020363",
+                          "-0.457582208","-0.099684927","0.607069431",
+                          "0.494702538","0.512396604","0.968494829",
+                          "0.930644642","-0.925853916")
+gbt.rna.ven.pearson <- c("0.905819016","-0.194143678","0.658213465",
+                         "-0.343268218","0.241723849","0.648055495",
+                         "0.930182236","0.806121592","0.95229431",
+                         "0.780614575","0.746470005","0.627643838",
+                         "0.998350314","0.969552207","-0.190122135")
+t.test(gbt.prot.ven.pearson, mu=0.7, alternative = "less")
+t.test(gbt.rna.ven.pearson, mu=0.746, alternative = "less")
+
+# try combining scores - scaling wv this time
+all.scores <- merge(global100.wv, global100.wv.cd14, by = "sample", suffixes = c("_CD14vsCD34", "_CD14vsOther"))
+all.scores <- merge(all.scores, camilo, by = "sample")
+all.scores$wv_scaled <- scales::rescale(all.scores$WV_CD14vsCD34)
+all.scores$wv_cd14_scaled <- scales::rescale(all.scores$WV_CD14vsOther)
+all.scores$combo <- all.scores$wv_scaled + all.scores$Monocyte
+all.scores$combo_cd14 <- all.scores$wv_cd14_scaled + all.scores$Monocyte
+all.scores[,c("mean_combo", "mean_combo_cd14")] <- NA
+for (i in 1:nrow(all.scores)) {
+  all.scores$mean_combo[i] <- mean(c(all.scores$wv_scaled[i], all.scores$Monocyte[i]))
+  all.scores$mean_combo_cd14[i] <- mean(c(all.scores$wv_cd14_scaled[i], all.scores$Monocyte[i])) 
+}
+
+# sum
+# first try combo score using CD14 vs CD34 signature
+combo.drug.AUC <- merge(all.scores[,c("sample", "combo")], drug.BeatAML.wide, by="sample")
+combo.corr <- DMEA::rank_corr(combo.drug.AUC) 
+write.csv(combo.corr$result, "BeatAML_xcell_deconvolution_plus_scaled_sorted_WV_CD14vsCD34_correlation_with_drug_AUC.csv", row.names = FALSE)
+ggsave("BeatAML_xcell_deconvolution_plus_scaled_sorted_WV_CD14vsCD34_correlation_with_drug_AUC_scatterPlots.pdf", combo.corr$scatter.plots)
+
+# next try combo score using CD14 vs other signature
+combo.drug.AUC <- merge(all.scores[,c("sample", "combo_cd14")], drug.BeatAML.wide, by="sample")
+combo.corr <- DMEA::rank_corr(combo.drug.AUC) 
+write.csv(combo.corr$result, "BeatAML_xcell_deconvolution_plus_scaled_sorted_WV_CD14vsOther_correlation_with_drug_AUC.csv", row.names = FALSE)
+ggsave("BeatAML_xcell_deconvolution_plus_scaled_sorted_WV_CD14vsOther_correlation_with_drug_AUC_scatterPlots.pdf", combo.corr$scatter.plots)
+
+# mean
+# first try combo score using CD14 vs CD34 signature
+combo.drug.AUC <- merge(all.scores[,c("sample", "mean_combo")], drug.BeatAML.wide, by="sample")
+combo.corr <- DMEA::rank_corr(combo.drug.AUC) 
+write.csv(combo.corr$result, "BeatAML_mean_xcell_deconvolution_with_scaled_sorted_WV_CD14vsCD34_correlation_with_drug_AUC.csv", row.names = FALSE)
+ggsave("BeatAML_mean_xcell_deconvolution_with_scaled_sorted_WV_CD14vsCD34_correlation_with_drug_AUC_scatterPlots.pdf", combo.corr$scatter.plots)
+
+# next try combo score using CD14 vs other signature
+combo.drug.AUC <- merge(all.scores[,c("sample", "mean_combo_cd14")], drug.BeatAML.wide, by="sample")
+combo.corr <- DMEA::rank_corr(combo.drug.AUC) 
+write.csv(combo.corr$result, "BeatAML_mean_xcell_deconvolution_with_scaled_sorted_WV_CD14vsOther_correlation_with_drug_AUC.csv", row.names = FALSE)
+ggsave("BeatAML_mean_xcell_deconvolution_with_scaled_sorted_WV_CD14vsOther_correlation_with_drug_AUC_scatterPlots.pdf", combo.corr$scatter.plots)
 
 # try to optimize signature (# of proteins, which proteins, Log2FC or adj.P.Value or both?)
 
