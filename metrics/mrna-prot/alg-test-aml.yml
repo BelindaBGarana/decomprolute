@@ -1,11 +1,9 @@
 cancerTypes:
   - aml
 prot-algorithms:
-  - mcpcounter
   - wv
   - xcell
 mrna-algorithms:
-  - mcpcounter
   - wv
   - xcell
 tissueTypes:
