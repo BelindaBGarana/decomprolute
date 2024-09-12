@@ -2,10 +2,8 @@ cancerTypes:
   - aml
 prot-algorithms:
   - wv
-  - xcell
 mrna-algorithms:
   - wv
-  - xcell
 tissueTypes:
    - tumor
 signatures:
