@@ -1,13 +1,11 @@
 cancerTypes:
   - aml
 prot-algorithms:
-  - cibersort
   - epic
   - mcpcounter
   - wv
   - xcell
 mrna-algorithms:
-  - cibersort
   - epic
   - mcpcounter
   - wv
