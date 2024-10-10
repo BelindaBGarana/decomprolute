@@ -27,16 +27,14 @@ evalMonoSig <- function(global.df100, temp.sig, temp.name) {
   colnames(temp.test.df)[1] <- "value"
   temp.test.df$variable <- rownames(temp.test.df)
   temp.test.df$filter <- temp.name
-  test.df <- rbind(test.df, temp.test.df)
-  
-  # evaluate accuracy based on categorization: are monocyte scores highest for CD14 samples? - actually, would have to do CD34 & MSC scores also
-  
+
   ## Beat AML
   # perform DMEA on Beat AML global proteomics
-  DMEA.result <- DMEA::DMEA(BeatAML$drug, gmt, BeatAML$global, temp.sig)
-  corr.df <- DMEA.result$corr.result
-  corr.df$filter <- temp.name
-  all.corr.df <- rbind(all.corr.df, corr.df)
+  DMEA.result <- try(DMEA::DMEA(BeatAML$drug, gmt, BeatAML$global, temp.sig), silent=TRUE)
+  if (!inherits(DMEA.result, "try-error")) {
+    corr.df <- DMEA.result$corr.result
+    corr.df$filter <- temp.name 
+  } else {corr.df <- data.frame()}
   return(list(wv = temp.wv, test = temp.test.df, corr = corr.df))
 }
 
@@ -109,16 +107,20 @@ global.df$Sample <- rownames(global.df)
 global.df <- global.df[,c("Sample", colnames(global.df)[1:(ncol(global.df)-1)])]
 global.df100 <- global.df[,colSums(is.na(global.df)) == 0]
 
-# load sorted proteomics signature
-cd14.sig <- read.csv(synapser::synGet("syn59424916")$path) # DIA
-cd14.sig$sig <- FALSE
-cd14.sig[cd14.sig$adj.P.Val <= 0.05,]$sig <- TRUE
+# load sorted proteomics signature: CD14: Ven sens vs resistant
+cd14.sig <- read.csv(synapser::synGet("syn59428317")$path) # DIA
+# cd14.sig$sig <- FALSE
+# cd14.sig[which(cd14.sig$adj.P.Val <= 0.05),]$sig <- TRUE
 cd14.sig$score <- -log(cd14.sig$adj.P.Val, 10) * cd14.sig$Log2FC
-sig.filter <- cd14.sig[cd14.sig$sig,]
+#sig.filter <- cd14.sig[cd14.sig$sig,]
 n.top <- c(1,5,10,25,50,100,200)
-filters <- list("noFilter" = cd14.sig, "maxFDR0.05" = sig.filter,
-                "absLog2FC" = n.top, "maxFDR0.05-absLog2FC" = n.top,
-                "Log2FC" = n.top, "maxFDR0.05-Log2FC" = n.top, "FDR" = n.top, 
+filters <- list("noFilter" = cd14.sig, 
+                #"maxFDR0.05" = sig.filter,
+                "absLog2FC" = n.top, 
+                #"maxFDR0.05-absLog2FC" = n.top,
+                "Log2FC" = n.top, 
+                #"maxFDR0.05-Log2FC" = n.top, 
+                "FDR" = n.top, 
                 "FDR-Log2FC" = n.top, "FDR-absLog2FC" = n.top)
 # keep track of which filter produces the best result
 test.df <- data.frame()
@@ -166,13 +168,13 @@ for (i in 1:length(filters)) {
     all.corr.df <- rbind(all.corr.df, evalResults$corr)
   }
 }
-write.csv(wv.df, "CD14_DIA_filters_WV.csv", row.names = FALSE)
-write.csv(test.df, "Ttest_CD14_DIA_filters_WV.csv", row.names = FALSE)
-write.csv(all.corr.df, "Correlation_BeatAML_drug_AUC_CD14_DIA_filters_WV.csv", row.names = FALSE)
-write.csv(test.df[test.df$variable=="p.value",], "pValue_CD14_DIA_filters_WV.csv", row.names = FALSE)
-write.csv(all.corr.df[all.corr.df$Drug == "Venetoclax",], "Venetoclax_BeatAML_drug_AUC_CD14_DIA_filters_WV.csv", row.names = FALSE)
-write.csv(all.corr.df[all.corr.df$Drug == "Azacytidine - Venetoclax",], "AzaVen_BeatAML_drug_AUC_CD14_DIA_filters_WV.csv", row.names = FALSE)
-write.csv(all.corr.df[all.corr.df$Drug == "Azacytidine",], "Azacytidine_BeatAML_drug_AUC_CD14_DIA_filters_WV.csv", row.names = FALSE)
+write.csv(wv.df, "VenResistant_CD14vsOther_DIA_filters_WV.csv", row.names = FALSE)
+write.csv(test.df, "Ttest_VenResistant_CD14vsOther_DIA_filters_WV.csv", row.names = FALSE)
+write.csv(all.corr.df, "Correlation_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV.csv", row.names = FALSE)
+write.csv(test.df[test.df$variable=="p.value",], "pValue_CD14_VenSensVSResistant_DIA_filters_WV.csv", row.names = FALSE)
+write.csv(all.corr.df[all.corr.df$Drug == "Venetoclax",], "Venetoclax_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV.csv", row.names = FALSE)
+write.csv(all.corr.df[all.corr.df$Drug == "Azacytidine - Venetoclax",], "AzaVen_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV.csv", row.names = FALSE)
+write.csv(all.corr.df[all.corr.df$Drug == "Azacytidine",], "Azacytidine_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV.csv", row.names = FALSE)
 
 ## plot overview of results
 # p-value
@@ -180,9 +182,9 @@ test.df <- test.df|>
   tidyr::separate(filter,into=c('Top','N_proteins','filterType'),sep='_',remove=FALSE)
 test.df$N_proteins <- as.numeric(test.df$N_proteins)
 test.df$`Filtered for FDR <= 0.05` <- FALSE
-test.df[grepl("maxFDR0.05",test.df$filter),]$`Filtered for FDR <= 0.05` <- TRUE
+#test.df[grepl("maxFDR0.05",test.df$filter),]$`Filtered for FDR <= 0.05` <- TRUE
 test.df$`Sorting Method` <- test.df$filterType
-test.df[test.df$`Filtered for FDR <= 0.05`, ]$`Sorting Method` <- stringr::str_split_fixed(test.df[test.df$`Filtered for FDR <= 0.05`, ]$filterType, "-", 2)[,2]
+#test.df[test.df$`Filtered for FDR <= 0.05`, ]$`Sorting Method` <- stringr::str_split_fixed(test.df[test.df$`Filtered for FDR <= 0.05`, ]$filterType, "-", 2)[,2]
 # any remaining "sorting method" with a dash is using the score column
 test.df[which(test.df$`filterType` == "FDR-Log2FC"),]$`Sorting Method` <- "-LogFDR*Log2FC"
 test.df[which(test.df$`filterType` == "FDR-absLog2FC"),]$`Sorting Method` <- "-LogFDR*|Log2FC|"
@@ -192,16 +194,16 @@ ggplot(test.df[test.df$variable=="p.value" & !is.na(test.df$N_proteins),],
        aes(x=N_proteins, y=-log(as.numeric(value), 10), color = `Sorting Method`, shape = `Filtered for FDR <= 0.05`)) + 
   scale_x_continuous(trans="log10") +
   geom_point() + theme_minimal() + xlab("Number of Proteins") + ylab("-Log(P-value)") + ggtitle("T-test: Monocyte scores are higher in CD14+ samples")
-ggsave("pValue_CD14_DIA_filters_WV.pdf", width = 5, height = 5)
+ggsave("pValue_CD14_VenSensVSResistant_DIA_filters_WV.pdf", width = 5, height = 5)
 
 # Venetoclax
 all.corr.df <- all.corr.df|>
   tidyr::separate(filter,into=c('Top','N_proteins','filterType'),sep='_',remove=FALSE)
 all.corr.df$N_proteins <- as.numeric(all.corr.df$N_proteins)
 all.corr.df$`Filtered for FDR <= 0.05` <- FALSE
-all.corr.df[grepl("maxFDR0.05",all.corr.df$filter),]$`Filtered for FDR <= 0.05` <- TRUE
+#all.corr.df[grepl("maxFDR0.05",all.corr.df$filter),]$`Filtered for FDR <= 0.05` <- TRUE
 all.corr.df$`Sorting Method` <- all.corr.df$filterType
-all.corr.df[all.corr.df$`Filtered for FDR <= 0.05`, ]$`Sorting Method` <- stringr::str_split_fixed(all.corr.df[all.corr.df$`Filtered for FDR <= 0.05`, ]$filterType, "-", 2)[,2]
+#all.corr.df[all.corr.df$`Filtered for FDR <= 0.05`, ]$`Sorting Method` <- stringr::str_split_fixed(all.corr.df[all.corr.df$`Filtered for FDR <= 0.05`, ]$filterType, "-", 2)[,2]
 # any remaining "sorting method" with a dash is using the score column
 all.corr.df[which(all.corr.df$`filterType` == "FDR-Log2FC"),]$`Sorting Method` <- "-LogFDR*Log2FC"
 all.corr.df[which(all.corr.df$`filterType` == "FDR-absLog2FC"),]$`Sorting Method` <- "-LogFDR*|Log2FC|"
@@ -212,21 +214,21 @@ ggplot(all.corr.df[all.corr.df$Drug == "Venetoclax" & !is.na(all.corr.df$N_prote
        aes(x=N_proteins, y=Pearson.est, color = `Sorting Method`, shape = `Filtered for FDR <= 0.05`)) + 
   scale_x_continuous(trans="log10") +
   geom_point() + theme_minimal() + xlab("Number of Proteins") + ylab("Pearson Correlation Estimate") + ggtitle("Venetoclax Sensitivity is Predicted by CD14+ Signature")
-ggsave("Venetoclax_BeatAML_drug_AUC_CD14_DIA_filters_WV.pdf", width = 5, height = 5)
+ggsave("Venetoclax_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV.pdf", width = 5, height = 5)
 
 # AV
 ggplot(all.corr.df[all.corr.df$Drug == "Azacytidine - Venetoclax" & !is.na(all.corr.df$N_proteins),], 
        aes(x=N_proteins, y=Pearson.est, color = `Sorting Method`, shape = `Filtered for FDR <= 0.05`)) + 
   scale_x_continuous(trans="log10") +
   geom_point() + theme_minimal() + xlab("Number of Proteins") + ylab("Pearson Correlation Estimate") + ggtitle("Aza+Ven Sensitivity is Predicted by CD14+ Signature")
-ggsave("AzaVen_BeatAML_drug_AUC_CD14_DIA_filters_WV.pdf", width = 5, height = 5)
+ggsave("AzaVen_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV.pdf", width = 5, height = 5)
 
 # Aza
 ggplot(all.corr.df[all.corr.df$Drug == "Azacytidine" & !is.na(all.corr.df$N_proteins),], 
        aes(x=N_proteins, y=Pearson.est, color = `Sorting Method`, shape = `Filtered for FDR <= 0.05`)) + 
   scale_x_continuous(trans="log10") +
   geom_point() + theme_minimal() + xlab("Number of Proteins") + ylab("Pearson Correlation Estimate") + ggtitle("Azacytidine Sensitivity is Predicted by CD14+ Signature")
-ggsave("Azacytidine_BeatAML_drug_AUC_CD14_DIA_filters_WV.pdf", width = 5, height = 5)
+ggsave("Azacytidine_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV.pdf", width = 5, height = 5)
 
 # combo
 ggplot(na.omit(all.corr.df[all.corr.df$Drug == "Azacytidine" | 
@@ -235,7 +237,7 @@ ggplot(na.omit(all.corr.df[all.corr.df$Drug == "Azacytidine" |
        aes(x=N_proteins, y=Pearson.est, color = `Sorting Method`, shape = `Filtered for FDR <= 0.05`)) + 
   scale_x_continuous(trans="log10") + facet_grid(rows = vars(Drug)) +
   geom_point() + xlab("Number of Proteins") + ylab("Pearson Correlation Estimate") + ggtitle("Drug Sensitivity is Predicted by CD14+ Signature")
-ggsave("BeatAML_drug_AUC_CD14_DIA_filters_WV.pdf")
+ggsave("BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV.pdf")
 
 ggplot(na.omit(all.corr.df[all.corr.df$Drug == "Azacytidine" | 
                              all.corr.df$Drug == "Azacytidine - Venetoclax" | 
@@ -243,32 +245,25 @@ ggplot(na.omit(all.corr.df[all.corr.df$Drug == "Azacytidine" |
        aes(x=N_proteins, y=Pearson.est, color = `Sorting Method`, shape = `Filtered for FDR <= 0.05`)) + 
   scale_x_continuous(trans="log10") + facet_grid(cols = vars(Drug)) +
   geom_point() + xlab("Number of Proteins") + ylab("Pearson Correlation Estimate") + ggtitle("Drug Sensitivity is Predicted by CD14+ Signature")
-ggsave("BeatAML_drug_AUC_CD14_DIA_filters_WV_v2.pdf")
+ggsave("BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV_v2.pdf")
 
 ## also try incorporating significance with size
 ggplot(all.corr.df[all.corr.df$Drug == "Venetoclax" & !is.na(all.corr.df$N_proteins),], 
        aes(x=N_proteins, y=Pearson.est, color = `Sorting Method`, shape = `Filtered for FDR <= 0.05`, size = `-LogFDR`)) + 
   scale_x_continuous(trans="log10") +
   geom_point() + theme_minimal() + xlab("Number of Proteins") + ylab("Pearson Correlation Estimate") + ggtitle("Venetoclax Sensitivity is Predicted by CD14+ Signature")
-ggsave("Venetoclax_BeatAML_drug_AUC_CD14_DIA_filters_WV_v2.pdf", width = 5, height = 5)
+ggsave("Venetoclax_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV_v2.pdf", width = 5, height = 5)
 
 # AV
 ggplot(all.corr.df[all.corr.df$Drug == "Azacytidine - Venetoclax" & !is.na(all.corr.df$N_proteins),], 
        aes(x=N_proteins, y=Pearson.est, color = `Sorting Method`, shape = `Filtered for FDR <= 0.05`, size = `-LogFDR`)) + 
   scale_x_continuous(trans="log10") +
   geom_point() + theme_minimal() + xlab("Number of Proteins") + ylab("Pearson Correlation Estimate") + ggtitle("Aza+Ven Sensitivity is Predicted by CD14+ Signature")
-ggsave("AzaVen_BeatAML_drug_AUC_CD14_DIA_filters_WV_v2.pdf", width = 5, height = 5)
+ggsave("AzaVen_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV_v2.pdf", width = 5, height = 5)
 
 # Aza
 ggplot(all.corr.df[all.corr.df$Drug == "Azacytidine" & !is.na(all.corr.df$N_proteins),], 
        aes(x=N_proteins, y=Pearson.est, color = `Sorting Method`, shape = `Filtered for FDR <= 0.05`, size = `-LogFDR`)) + 
   scale_x_continuous(trans="log10") +
   geom_point() + theme_minimal() + xlab("Number of Proteins") + ylab("Pearson Correlation Estimate") + ggtitle("Azacytidine Sensitivity is Predicted by CD14+ Signature")
-ggsave("Azacytidine_BeatAML_drug_AUC_CD14_DIA_filters_WV_v2.pdf", width = 5, height = 5)
-
-write.csv(test.df, "Ttest_CD14_DIA_filters_WV_v2.csv", row.names = FALSE)
-write.csv(all.corr.df, "Correlation_BeatAML_drug_AUC_CD14_DIA_filters_WV_v2.csv", row.names = FALSE)
-write.csv(test.df[test.df$variable=="p.value",], "pValue_CD14_DIA_filters_WV_v2.csv", row.names = FALSE)
-write.csv(all.corr.df[all.corr.df$Drug == "Venetoclax",], "Venetoclax_BeatAML_drug_AUC_CD14_DIA_filters_WV_v2.csv", row.names = FALSE)
-write.csv(all.corr.df[all.corr.df$Drug == "Azacytidine - Venetoclax",], "AzaVen_BeatAML_drug_AUC_CD14_DIA_filters_WV_v2.csv", row.names = FALSE)
-write.csv(all.corr.df[all.corr.df$Drug == "Azacytidine",], "Azacytidine_BeatAML_drug_AUC_CD14_DIA_filters_WV_v2.csv", row.names = FALSE)
+ggsave("Azacytidine_BeatAML_drug_AUC_CD14_VenSensVSResistant_DIA_filters_WV_v2.pdf", width = 5, height = 5)
